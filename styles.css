@@ -423,6 +423,38 @@
         user-select: none;
       }
 
+      /* ---------- hero 3D hover scene ---------- */
+      .hero-stage {
+        perspective: 1200px;
+      }
+      #heroTilt {
+        --rx: 0deg;
+        --ry: 0deg;
+        --lift: 0;
+        transform-style: preserve-3d;
+        transform: rotateX(var(--rx)) rotateY(var(--ry))
+          translateY(calc(var(--lift) * -8px)) scale(calc(1 + var(--lift) * 0.02));
+        transition: transform 0.18s ease-out;
+        will-change: transform;
+      }
+      .hero-stage [data-depth] {
+        translate: calc(var(--px, 0) * 20px) calc(var(--py, 0) * 20px);
+        transition: translate 0.2s ease-out;
+      }
+      .hero-glare {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        opacity: var(--glare, 0);
+        transition: opacity 0.35s ease;
+        background: radial-gradient(
+          380px circle at var(--gx, 50%) var(--gy, 40%),
+          rgba(255, 255, 255, 0.22),
+          transparent 62%
+        );
+        mix-blend-mode: screen;
+      }
+
       /* =========================================================
          LIGHT THEME
          Dark stays the default. `html.light` swaps page, surfaces,
@@ -790,6 +822,15 @@
       }
 
       @media (prefers-reduced-motion: reduce) {
+        #heroTilt {
+          transform: none !important;
+        }
+        .hero-stage [data-depth] {
+          translate: none !important;
+        }
+        .hero-glare {
+          opacity: 0 !important;
+        }
         html {
           scroll-behavior: auto;
         }

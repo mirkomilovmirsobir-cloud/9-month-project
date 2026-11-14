@@ -979,23 +979,53 @@ function initCounters() {
   counters.forEach((el) => observer.observe(el));
 }
 
-// --- HERO 3D TILT ---
+// --- HERO 3D HOVER SCENE ---
 function initTilt() {
+  const stage = document.querySelector(".hero-stage");
   const card = document.getElementById("heroTilt");
-  if (!card || reducedMotion) return;
-  const wrap = card.parentElement;
-  if (!wrap) return;
+  if (!stage || !card || reducedMotion) return;
 
-  wrap.addEventListener("mousemove", (e) => {
-    const rect = wrap.getBoundingClientRect();
+  const canHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+  if (!canHover) return;
+
+  const layers = Array.from(stage.querySelectorAll("[data-depth]"));
+  const glare = stage.querySelector(".hero-glare");
+  const maxTilt = 14;
+
+  const reset = () => {
+    card.style.setProperty("--rx", "0deg");
+    card.style.setProperty("--ry", "0deg");
+    card.style.setProperty("--lift", "0");
+    layers.forEach((el) => {
+      el.style.setProperty("--px", "0");
+      el.style.setProperty("--py", "0");
+    });
+    if (glare) glare.style.setProperty("--glare", "0");
+  };
+
+  stage.addEventListener("mousemove", (e) => {
+    const rect = stage.getBoundingClientRect();
     const px = (e.clientX - rect.left) / rect.width - 0.5;
     const py = (e.clientY - rect.top) / rect.height - 0.5;
-    card.style.transform = `rotateY(${px * 10}deg) rotateX(${-py * 10}deg)`;
+
+    card.style.setProperty("--rx", `${(-py * maxTilt).toFixed(2)}deg`);
+    card.style.setProperty("--ry", `${(px * maxTilt).toFixed(2)}deg`);
+    card.style.setProperty("--lift", "1");
+
+    layers.forEach((el) => {
+      const depth = parseFloat(el.dataset.depth) || 1;
+      el.style.setProperty("--px", (px * depth).toFixed(3));
+      el.style.setProperty("--py", (py * depth).toFixed(3));
+    });
+
+    if (glare) {
+      glare.style.setProperty("--gx", `${e.clientX - rect.left}px`);
+      glare.style.setProperty("--gy", `${e.clientY - rect.top}px`);
+      glare.style.setProperty("--glare", "1");
+    }
   });
 
-  wrap.addEventListener("mouseleave", () => {
-    card.style.transform = "";
-  });
+  stage.addEventListener("mouseleave", reset);
 }
 
 // --- CURSOR GLOW + CARD SPOTLIGHT ---

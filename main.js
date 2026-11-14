@@ -240,6 +240,7 @@ function init() {
   initRotator();
   initCounters();
   initTilt();
+  initHeroStory();
   initPointerEffects();
   initModals();
   applyTheme(
@@ -1026,6 +1027,97 @@ function initTilt() {
   });
 
   stage.addEventListener("mouseleave", reset);
+}
+
+// --- HERO SCROLL STORY ---
+const heroSlides = [
+  {
+    name: "Gadjetlar",
+    chips: ["5000 mAh batareya", "Titan korpus", "24 soat yetkazish", "Rasmiy kafolat"],
+  },
+  {
+    name: "Elektronika",
+    chips: ["M3 chip kuchi", "4K Retina displey", "2 yil kafolat", "Bepul o'rnatish"],
+  },
+  {
+    name: "Maishiy texnika",
+    chips: ["A+ energiya sinfi", "Kuchsiz shovqin", "Bepul yetkazish", "Rasmiy servis"],
+  },
+  {
+    name: "Kiyim-kechak",
+    chips: ["100% tabiiy mato", "Barcha o'lchamlar", "14 kun qaytarish", "Original brend"],
+  },
+];
+
+function initHeroStory() {
+  const story = document.getElementById("heroStory");
+  const word = document.getElementById("heroWord");
+  if (!story || !word) return;
+
+  const images = Array.from(story.querySelectorAll(".hero-orb-img"));
+  const chips = Array.from(story.querySelectorAll(".hero-chip"));
+  const dots = Array.from(story.querySelectorAll(".hero-dots i"));
+
+  let current = -1;
+  let timers = [];
+
+  const show = (idx) => {
+    if (idx === current) return;
+    current = idx;
+    const slide = heroSlides[idx];
+
+    timers.forEach(clearTimeout);
+    timers = [];
+
+    word.classList.add("is-swapping");
+    timers.push(
+      setTimeout(() => {
+        word.textContent = slide.name;
+        word.classList.remove("is-swapping");
+      }, 200)
+    );
+
+    images.forEach((img, i) => img.classList.toggle("is-active", i === idx));
+    dots.forEach((dot, i) => dot.classList.toggle("is-on", i === idx));
+
+    chips.forEach((chip, i) => {
+      chip.classList.add("is-off");
+      timers.push(
+        setTimeout(() => {
+          chip.textContent = slide.chips[i];
+          chip.classList.remove("is-off");
+        }, 160 + i * 60)
+      );
+    });
+  };
+
+  const update = () => {
+    const span = Math.max(1, story.offsetHeight - window.innerHeight);
+    const p = Math.min(1, Math.max(0, -story.getBoundingClientRect().top / span));
+    story.style.setProperty("--p", p.toFixed(4));
+
+    if (reducedMotion) return;
+    const idx = Math.min(heroSlides.length - 1, Math.floor(p * heroSlides.length));
+    if (idx !== current) show(idx);
+  };
+
+  let queued = false;
+  window.addEventListener(
+    "scroll",
+    () => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(() => {
+        queued = false;
+        update();
+      });
+    },
+    { passive: true }
+  );
+  window.addEventListener("resize", update);
+
+  show(0);
+  update();
 }
 
 // --- CURSOR GLOW + CARD SPOTLIGHT ---

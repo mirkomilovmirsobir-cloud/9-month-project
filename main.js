@@ -979,17 +979,307 @@ function initCounters() {
   counters.forEach((el) => observer.observe(el));
 }
 
-// --- HERO 3D PRODUCT CAROUSEL ---
+// --- HERO VITRINA (product display case) ---
 const carouselData = [
-  { title: "iPhone 15 Pro Max", price: "16 200 000 so'm", category: "Gadjetlar" },
-  { title: "Samsung Galaxy S24 Ultra", price: "15 400 000 so'm", category: "Gadjetlar" },
-  { title: "MacBook Pro 14 M3", price: "22 500 000 so'm", category: "Elektronika" },
-  { title: "AirPods Pro 2", price: "2 950 000 so'm", category: "Elektronika" },
-  { title: "Dyson V15 Detect", price: "8 900 000 so'm", category: "Maishiy texnika" },
-  { title: "Nike Pegasus 41", price: "1 290 000 so'm", category: "Kiyim-kechak" },
-  { title: "PlayStation 5 Slim", price: "6 400 000 so'm", category: "Elektronika" },
-  { title: "LG OLED TV 55\"", price: "11 200 000 so'm", category: "Maishiy texnika" },
+  {
+    title: "iPhone 15 Pro Max",
+    price: "16 200 000 so'm",
+    category: "Gadjetlar",
+    wash: "#e7e4ff",
+    specs: ["256 GB", "Titan", "2 yil kafolat"],
+    image:
+      "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=700&auto=format&fit=crop&q=80",
+  },
+  {
+    title: "Samsung Galaxy S24 Ultra",
+    price: "15 400 000 so'm",
+    category: "Gadjetlar",
+    wash: "#e3f0ff",
+    specs: ["12/512 GB", "S Pen", "AMOLED"],
+    image:
+      "https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=700&auto=format&fit=crop&q=80",
+  },
+  {
+    title: "MacBook Pro 14 M3",
+    price: "22 500 000 so'm",
+    category: "Elektronika",
+    wash: "#efeaff",
+    specs: ["16/512 GB", "M3 chip", "14 dyuym"],
+    image:
+      "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=700&auto=format&fit=crop&q=80",
+  },
+  {
+    title: "AirPods Pro 2",
+    price: "2 950 000 so'm",
+    category: "Elektronika",
+    wash: "#e5f7f0",
+    specs: ["ANC", "Type-C", "3 soat"],
+    image:
+      "https://images.unsplash.com/photo-1600294037681-c80b4cb5b434?w=700&auto=format&fit=crop&q=80",
+  },
+  {
+    title: "Dyson V15 Detect",
+    price: "8 900 000 so'm",
+    category: "Maishiy texnika",
+    wash: "#fff0e3",
+    specs: ["Akkumulyator", "Lazer", "60 daqiqa"],
+    image:
+      "https://images.unsplash.com/photo-1558317374-067fb5f30001?w=700&auto=format&fit=crop&q=80",
+  },
+  {
+    title: "Canon EOS R50",
+    price: "9 800 000 so'm",
+    category: "Elektronika",
+    wash: "#e9f1ff",
+    specs: ["24 MP", "4K video", "18-45mm"],
+    image:
+      "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=700&auto=format&fit=crop&q=80",
+  },
+  {
+    title: "PlayStation 5 Slim",
+    price: "6 400 000 so'm",
+    category: "Elektronika",
+    wash: "#ecebff",
+    specs: ["1 TB SSD", "4K 120 Hz", "DualSense"],
+    image:
+      "https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=700&auto=format&fit=crop&q=80",
+  },
+  {
+    title: "LG OLED TV 55\"",
+    price: "11 200 000 so'm",
+    category: "Maishiy texnika",
+    wash: "#e8f6ff",
+    specs: ["55 dyuym", "OLED", "120 Hz"],
+    image:
+      "https://images.unsplash.com/photo-1593784991095-a205069470b6?w=700&auto=format&fit=crop&q=80",
+  },
 ];
+
+// The showcase styling lives here so the page markup and theme file stay untouched.
+function injectVitrinaStyles() {
+  if (document.getElementById("vitrinaStyles")) return;
+
+  const style = document.createElement("style");
+  style.id = "vitrinaStyles";
+  style.textContent = `
+      .hero-panel {
+        --wash: #e7e4ff;
+        position: relative;
+        background: linear-gradient(180deg, #ffffff 0%, #f8f8fc 52%, #edf0f6 100%);
+        border-color: rgba(15, 23, 42, 0.08);
+        box-shadow: 0 45px 95px -55px rgba(15, 23, 42, 0.55);
+      }
+      .hero-panel::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 44%;
+        height: 66%;
+        width: min(46rem, 90%);
+        transform: translate(-50%, -50%);
+        border-radius: 50%;
+        background: radial-gradient(closest-side, var(--wash), transparent 74%);
+        filter: blur(28px);
+        opacity: 0.9;
+        transition: background 0.7s ease;
+        pointer-events: none;
+        z-index: 0;
+      }
+      .hero-halo {
+        display: none;
+      }
+      .hero-kicker {
+        position: relative;
+        z-index: 2;
+        border: 0;
+        background: transparent;
+        padding: 0;
+        color: #64748b;
+        font-size: 0.56rem;
+        letter-spacing: 0.28em;
+      }
+      .hero-kicker span {
+        background: #0f172a;
+        box-shadow: none;
+      }
+      .hero-word {
+        display: none;
+      }
+      .carousel-scene {
+        z-index: 2;
+        height: clamp(12.5rem, 31vh, 17rem);
+        perspective: none;
+      }
+      .carousel-scene::before {
+        content: "";
+        position: absolute;
+        left: 4%;
+        right: 4%;
+        top: 68%;
+        height: 1px;
+        z-index: 0;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(15, 23, 42, 0.18) 14%,
+          rgba(15, 23, 42, 0.18) 86%,
+          transparent
+        );
+      }
+      .carousel-ring {
+        transform-style: flat;
+      }
+      .carousel-item {
+        will-change: transform, opacity;
+        height: clamp(6.6rem, 15vh, 9.2rem);
+        width: clamp(4.8rem, 11vh, 6.8rem);
+      }
+      .carousel-item::before {
+        display: none;
+      }
+      .carousel-item img {
+        border-radius: 0.3rem;
+        -webkit-mask-image: radial-gradient(
+          ellipse 74% 74% at 50% 50%,
+          #000 76%,
+          rgba(0, 0, 0, 0.5) 92%,
+          transparent 100%
+        );
+        mask-image: radial-gradient(
+          ellipse 74% 74% at 50% 50%,
+          #000 76%,
+          rgba(0, 0, 0, 0.5) 92%,
+          transparent 100%
+        );
+        box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.07);
+        filter: drop-shadow(0 14px 20px rgba(15, 23, 42, 0.2));
+        animation: none;
+      }
+      .carousel-item.is-active img {
+        filter: drop-shadow(0 22px 28px rgba(15, 23, 42, 0.24));
+        animation: vitrinaFloat 7s ease-in-out infinite;
+      }
+      @keyframes vitrinaFloat {
+        0%,
+        100% {
+          translate: 0 0;
+        }
+        50% {
+          translate: 0 -6px;
+        }
+      }
+      .carousel-floor {
+        display: none;
+      }
+      .carousel-info {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.1rem;
+      }
+      .carousel-cat {
+        font-size: 0.55rem;
+        font-weight: 700;
+        letter-spacing: 0.3em;
+        text-transform: uppercase;
+        color: #94a3b8;
+      }
+      .carousel-info h2 {
+        margin-top: 0.3rem;
+        color: #0b1020;
+        font-size: clamp(0.95rem, 1.9vw, 1.15rem);
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+      .carousel-info p {
+        color: #475569;
+        font-size: 0.74rem;
+        letter-spacing: 0.08em;
+      }
+      .carousel-specs {
+        margin-top: 0.5rem;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.35rem;
+      }
+      .carousel-specs span {
+        border: 1px solid rgba(15, 23, 42, 0.14);
+        border-radius: 9999px;
+        background: rgba(255, 255, 255, 0.75);
+        padding: 0.22rem 0.62rem;
+        font-size: 0.55rem;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #475569;
+      }
+      .carousel-controls {
+        position: static;
+      }
+      .carousel-arrow {
+        position: absolute;
+        top: 44%;
+        z-index: 4;
+      }
+      .carousel-arrow[data-dir="-1"] {
+        left: 0.9rem;
+      }
+      .carousel-arrow[data-dir="1"] {
+        right: 0.9rem;
+      }
+      .carousel-arrow {
+        background: #ffffff;
+        border-color: rgba(15, 23, 42, 0.12);
+        color: #0f172a;
+        box-shadow: 0 10px 20px -14px rgba(15, 23, 42, 0.7);
+      }
+      .carousel-arrow:hover {
+        background: #0f172a;
+        border-color: #0f172a;
+        color: #ffffff;
+      }
+      .carousel-dots i {
+        background: rgba(15, 23, 42, 0.18);
+      }
+      .carousel-dots i.is-on {
+        background: #0f172a;
+      }
+      .hero-cta {
+        position: relative;
+        z-index: 2;
+      }
+      .hero-cta button:first-child {
+        background: #0f172a;
+        color: #ffffff;
+        box-shadow: 0 22px 34px -24px rgba(15, 23, 42, 0.95);
+      }
+      .hero-cta button:last-child {
+        background: #ffffff;
+        border-color: rgba(15, 23, 42, 0.14);
+        color: #0f172a;
+      }
+      .hero-cta button:last-child i {
+        color: #b45309;
+      }
+      @media (max-width: 640px) {
+        .carousel-scene {
+          height: 12.5rem;
+        }
+        .hero-panel::after {
+          height: 54%;
+        }
+        .hero-cta button:first-child,
+        .hero-cta button:last-child {
+          padding: 0.7rem 1rem;
+          font-size: 0.76rem;
+        }
+      }
+  `;
+  document.head.appendChild(style);
+}
 
 function initCarousel() {
   const scene = document.getElementById("carouselScene");
@@ -999,33 +1289,54 @@ function initCarousel() {
   const items = Array.from(ring.querySelectorAll(".carousel-item"));
   if (!items.length) return;
 
+  injectVitrinaStyles();
+
   const dots = Array.from(document.querySelectorAll("#carouselDots i"));
   const titleEl = document.getElementById("carouselTitle");
   const priceEl = document.getElementById("carouselPrice");
+  const infoEl = document.querySelector(".carousel-info");
   const wordEl = document.getElementById("heroWord");
-  const floorEl = document.querySelector(".carousel-floor");
+  const heroScene = document.querySelector(".hero-scene") || scene;
   const count = items.length;
-  const step = 360 / count;
 
-  let rot = -24;
-  let target = 0;
-  let tiltX = 0;
-  let tiltY = 0;
-  let tiltTargetX = 0;
-  let tiltTargetY = 0;
-  let activeIndex = 0;
+  const catEl = document.createElement("p");
+  catEl.className = "carousel-cat";
+  const specsEl = document.createElement("div");
+  specsEl.className = "carousel-specs";
+  if (infoEl) {
+    infoEl.insertBefore(catEl, infoEl.firstChild);
+    infoEl.appendChild(specsEl);
+  }
+
+  // every vitrina slot shows an electronics piece
+  items.forEach((item, i) => {
+    const data = carouselData[i % carouselData.length];
+    const img = item.querySelector("img");
+    if (img && data.image) {
+      img.src = data.image;
+      img.alt = data.title;
+    }
+  });
+
+  let active = -1;
+  let pos = 0;
+  let targetIndex = 0;
   let dragging = false;
   let dragStartX = 0;
-  let dragStartRot = 0;
+  let dragStartPos = 0;
   let paused = false;
   let autoTimer = null;
-
-  const heroScene = document.querySelector(".hero-scene") || scene;
+  let px = 0;
+  let py = 0;
+  let tpx = 0;
+  let tpy = 0;
   let scrollSp = 0;
   let scrollTargetSp = 0;
 
+  const stepSize = () => Math.min(146, Math.max(66, scene.clientWidth / 9.2));
+
   const readScroll = () => {
-    const span = (heroScene.offsetHeight || window.innerHeight) * 0.55;
+    const span = (heroScene.offsetHeight || window.innerHeight) * 0.75;
     scrollTargetSp = Math.min(1, Math.max(0, window.scrollY / span));
   };
 
@@ -1033,56 +1344,71 @@ function initCarousel() {
   window.addEventListener("resize", readScroll);
   readScroll();
 
-  const applyActive = (index) => {
+  const setActive = (index) => {
     const safe = ((index % count) + count) % count;
-    if (safe === activeIndex) return;
-    activeIndex = safe;
+    if (safe === active) return;
+    active = safe;
 
-    items.forEach((item, i) => item.classList.toggle("is-active", i === safe));
-    dots.forEach((dot, i) => dot.classList.toggle("is-on", i === safe));
-
-    const data = carouselData[safe];
+    const data = carouselData[safe % carouselData.length];
     if (titleEl) titleEl.textContent = data.title;
     if (priceEl) priceEl.textContent = data.price;
+    if (catEl) catEl.textContent = data.category;
     if (wordEl) wordEl.textContent = data.category;
+    if (specsEl)
+      specsEl.innerHTML = (data.specs || []).map((spec) => `<span>${spec}</span>`).join("");
+    dots.forEach((dot, i) => dot.classList.toggle("is-on", i === safe));
+    items.forEach((item, i) => item.classList.toggle("is-active", i === safe));
+    heroScene.style.setProperty("--wash", data.wash || "#e7e4ff");
+  };
+
+  const paint = () => {
+    const step = stepSize();
+    const compact = window.innerWidth < 640;
+    const height = scene.clientHeight;
+    const shelf = height * 0.78;
+
+    items.forEach((item, i) => {
+      let d = ((i - pos) % count + count) % count;
+      if (d > count / 2) d -= count;
+
+      const dist = Math.abs(d);
+      const centre = Math.max(0, 1 - dist);
+      const scale = compact ? 0.55 + centre * 0.6 : 0.54 + centre * 0.8;
+
+      const boxH = item.offsetHeight * scale;
+      const dy = shelf - boxH / 2 - height / 2;
+
+      item.style.transform =
+        "translate(-50%, -50%) translate3d(" +
+        (d * step).toFixed(2) +
+        "px, " +
+        dy.toFixed(2) +
+        "px, 0) scale(" +
+        scale.toFixed(3) +
+        ")";
+      item.style.opacity = dist > 3.2 ? "0" : Math.max(0.35, 1 - dist * 0.14).toFixed(3);
+      item.style.zIndex = String(100 - Math.round(dist * 12));
+      item.style.pointerEvents = dist > 3.2 ? "none" : "auto";
+    });
   };
 
   const loop = () => {
-    rot += (target - rot) * 0.09;
-    tiltX += (tiltTargetX - tiltX) * 0.07;
-    tiltY += (tiltTargetY - tiltY) * 0.07;
+    pos += (targetIndex - pos) * 0.14;
+    if (Math.abs(targetIndex - pos) < 0.001) pos = targetIndex;
+
+    px += (tpx - px) * 0.08;
+    py += (tpy - py) * 0.08;
     scrollSp += (scrollTargetSp - scrollSp) * 0.1;
 
-    const breathe = Math.sin(performance.now() / 1900) * 1.1;
-    const scrollDeg = scrollSp * 68;
-
     ring.style.transform =
-      "rotateX(" +
-      (-9 + tiltY - scrollSp * 7).toFixed(2) +
-      "deg) rotateY(" +
-      (rot + tiltX + breathe + scrollDeg).toFixed(2) +
-      "deg)";
-    scene.style.transform =
-      "translate3d(0, " +
-      (scrollSp * -2.2).toFixed(3) +
-      "rem, 0) scale(" +
-      (1 - scrollSp * 0.12).toFixed(4) +
-      ")";
-    if (wordEl) {
-      wordEl.style.transform =
-        "translate(-50%, calc(-50% - " + (scrollSp * 3.4).toFixed(3) + "rem))";
-      wordEl.style.opacity = (1 - scrollSp * 0.65).toFixed(3);
-    }
-    if (floorEl) floorEl.style.opacity = (1 - scrollSp * 0.7).toFixed(3);
+      "translate3d(" +
+      (px * 16).toFixed(2) +
+      "px, " +
+      (py * 10 - scrollSp * 20).toFixed(2) +
+      "px, 0)";
 
-    items.forEach((item, i) => {
-      const angle = (((rot + i * step) % 360) + 360) % 360;
-      const facing = Math.cos((angle * Math.PI) / 180);
-      const depth = (1 - facing) / 2;
-      item.style.opacity = (1 - depth * 0.86).toFixed(3);
-    });
-
-    applyActive(Math.round((-rot - scrollDeg) / step));
+    paint();
+    setActive(Math.round(pos));
     requestAnimationFrame(loop);
   };
 
@@ -1091,57 +1417,71 @@ function initCarousel() {
     if (reducedMotion) return;
     autoTimer = setInterval(() => {
       if (paused || dragging) return;
-      target -= step;
-    }, 3400);
+      targetIndex += 1;
+    }, 4600);
   };
+
+  const currentIndex = () => Math.round(pos);
+  const shortest = (itemIndex) => {
+    let d = ((itemIndex - currentIndex()) % count + count) % count;
+    if (d > count / 2) d -= count;
+    return d;
+  };
+
+  items.forEach((item, i) => {
+    item.addEventListener("click", () => {
+      const d = shortest(i);
+      if (d !== 0) targetIndex = currentIndex() + d;
+    });
+  });
 
   scene.addEventListener("pointerdown", (e) => {
     dragging = true;
     paused = true;
     dragStartX = e.clientX;
-    dragStartRot = target;
+    dragStartPos = pos;
     if (scene.setPointerCapture) scene.setPointerCapture(e.pointerId);
   });
 
   scene.addEventListener("pointermove", (e) => {
     if (dragging) {
-      target = dragStartRot + (e.clientX - dragStartX) * 0.32;
+      pos = dragStartPos - (e.clientX - dragStartX) / stepSize();
+      targetIndex = pos;
       return;
     }
     const rect = scene.getBoundingClientRect();
-    tiltTargetX = ((e.clientX - rect.left) / rect.width - 0.5) * 10;
-    tiltTargetY = -((e.clientY - rect.top) / rect.height - 0.5) * 7;
+    tpx = (e.clientX - rect.left) / rect.width - 0.5;
+    tpy = (e.clientY - rect.top) / rect.height - 0.5;
   });
 
   const endDrag = () => {
     if (!dragging) return;
     dragging = false;
-    target = -Math.round(-target / step) * step;
+    targetIndex = Math.round(pos);
     window.setTimeout(() => {
       paused = false;
-    }, 1400);
+    }, 1600);
   };
 
   scene.addEventListener("pointerup", endDrag);
   scene.addEventListener("pointercancel", endDrag);
 
   scene.addEventListener("pointerleave", () => {
-    tiltTargetX = 0;
-    tiltTargetY = 0;
+    tpx = 0;
+    tpy = 0;
     endDrag();
   });
 
   document.querySelectorAll(".carousel-arrow").forEach((button) => {
     button.addEventListener("click", () => {
-      target -= Number(button.dataset.dir) * step;
+      targetIndex += Number(button.dataset.dir);
     });
   });
 
-  if (reducedMotion) {
-    ring.style.transform = "rotateX(-9deg) rotateY(0deg)";
-    items.forEach((item, i) => (item.style.opacity = i === 0 ? "1" : "0.45"));
-    return;
-  }
+  paint();
+  setActive(0);
+
+  if (reducedMotion) return;
 
   loop();
   startAuto();

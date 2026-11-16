@@ -1003,6 +1003,7 @@ function initCarousel() {
   const titleEl = document.getElementById("carouselTitle");
   const priceEl = document.getElementById("carouselPrice");
   const wordEl = document.getElementById("heroWord");
+  const floorEl = document.querySelector(".carousel-floor");
   const count = items.length;
   const step = 360 / count;
 
@@ -1018,6 +1019,19 @@ function initCarousel() {
   let dragStartRot = 0;
   let paused = false;
   let autoTimer = null;
+
+  const heroScene = document.querySelector(".hero-scene") || scene;
+  let scrollSp = 0;
+  let scrollTargetSp = 0;
+
+  const readScroll = () => {
+    const span = (heroScene.offsetHeight || window.innerHeight) * 0.55;
+    scrollTargetSp = Math.min(1, Math.max(0, window.scrollY / span));
+  };
+
+  window.addEventListener("scroll", readScroll, { passive: true });
+  window.addEventListener("resize", readScroll);
+  readScroll();
 
   const applyActive = (index) => {
     const safe = ((index % count) + count) % count;
@@ -1037,12 +1051,29 @@ function initCarousel() {
     rot += (target - rot) * 0.09;
     tiltX += (tiltTargetX - tiltX) * 0.07;
     tiltY += (tiltTargetY - tiltY) * 0.07;
+    scrollSp += (scrollTargetSp - scrollSp) * 0.1;
 
     const breathe = Math.sin(performance.now() / 1900) * 1.1;
+    const scrollDeg = scrollSp * 68;
 
-    ring.style.setProperty("--rot", rot.toFixed(2) + "deg");
-    ring.style.setProperty("--tx", (tiltX + breathe).toFixed(2) + "deg");
-    ring.style.setProperty("--ty", tiltY.toFixed(2) + "deg");
+    ring.style.transform =
+      "rotateX(" +
+      (-9 + tiltY - scrollSp * 7).toFixed(2) +
+      "deg) rotateY(" +
+      (rot + tiltX + breathe + scrollDeg).toFixed(2) +
+      "deg)";
+    scene.style.transform =
+      "translate3d(0, " +
+      (scrollSp * -2.2).toFixed(3) +
+      "rem, 0) scale(" +
+      (1 - scrollSp * 0.12).toFixed(4) +
+      ")";
+    if (wordEl) {
+      wordEl.style.transform =
+        "translate(-50%, calc(-50% - " + (scrollSp * 3.4).toFixed(3) + "rem))";
+      wordEl.style.opacity = (1 - scrollSp * 0.65).toFixed(3);
+    }
+    if (floorEl) floorEl.style.opacity = (1 - scrollSp * 0.7).toFixed(3);
 
     items.forEach((item, i) => {
       const angle = (((rot + i * step) % 360) + 360) % 360;
@@ -1051,7 +1082,7 @@ function initCarousel() {
       item.style.opacity = (1 - depth * 0.86).toFixed(3);
     });
 
-    applyActive(Math.round(-rot / step));
+    applyActive(Math.round((-rot - scrollDeg) / step));
     requestAnimationFrame(loop);
   };
 
@@ -1107,7 +1138,7 @@ function initCarousel() {
   });
 
   if (reducedMotion) {
-    ring.style.setProperty("--rot", "0deg");
+    ring.style.transform = "rotateX(-9deg) rotateY(0deg)";
     items.forEach((item, i) => (item.style.opacity = i === 0 ? "1" : "0.45"));
     return;
   }

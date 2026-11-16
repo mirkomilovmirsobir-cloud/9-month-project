@@ -239,8 +239,7 @@ function init() {
   initReveal();
   initRotator();
   initCounters();
-  initTilt();
-  initHeroStory();
+  initCarousel();
   initPointerEffects();
   initModals();
   applyTheme(
@@ -980,144 +979,141 @@ function initCounters() {
   counters.forEach((el) => observer.observe(el));
 }
 
-// --- HERO 3D HOVER SCENE ---
-function initTilt() {
-  const stage = document.querySelector(".hero-stage");
-  const card = document.getElementById("heroTilt");
-  if (!stage || !card || reducedMotion) return;
-
-  const canHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
-  if (!canHover) return;
-
-  const layers = Array.from(stage.querySelectorAll("[data-depth]"));
-  const glare = stage.querySelector(".hero-glare");
-  const maxTilt = 14;
-
-  const reset = () => {
-    card.style.setProperty("--rx", "0deg");
-    card.style.setProperty("--ry", "0deg");
-    card.style.setProperty("--lift", "0");
-    layers.forEach((el) => {
-      el.style.setProperty("--px", "0");
-      el.style.setProperty("--py", "0");
-    });
-    if (glare) glare.style.setProperty("--glare", "0");
-  };
-
-  stage.addEventListener("mousemove", (e) => {
-    const rect = stage.getBoundingClientRect();
-    const px = (e.clientX - rect.left) / rect.width - 0.5;
-    const py = (e.clientY - rect.top) / rect.height - 0.5;
-
-    card.style.setProperty("--rx", `${(-py * maxTilt).toFixed(2)}deg`);
-    card.style.setProperty("--ry", `${(px * maxTilt).toFixed(2)}deg`);
-    card.style.setProperty("--lift", "1");
-
-    layers.forEach((el) => {
-      const depth = parseFloat(el.dataset.depth) || 1;
-      el.style.setProperty("--px", (px * depth).toFixed(3));
-      el.style.setProperty("--py", (py * depth).toFixed(3));
-    });
-
-    if (glare) {
-      glare.style.setProperty("--gx", `${e.clientX - rect.left}px`);
-      glare.style.setProperty("--gy", `${e.clientY - rect.top}px`);
-      glare.style.setProperty("--glare", "1");
-    }
-  });
-
-  stage.addEventListener("mouseleave", reset);
-}
-
-// --- HERO SCROLL STORY ---
-const heroSlides = [
-  {
-    name: "Gadjetlar",
-    chips: ["5000 mAh batareya", "Titan korpus", "24 soat yetkazish", "Rasmiy kafolat"],
-  },
-  {
-    name: "Elektronika",
-    chips: ["M3 chip kuchi", "4K Retina displey", "2 yil kafolat", "Bepul o'rnatish"],
-  },
-  {
-    name: "Maishiy texnika",
-    chips: ["A+ energiya sinfi", "Kuchsiz shovqin", "Bepul yetkazish", "Rasmiy servis"],
-  },
-  {
-    name: "Kiyim-kechak",
-    chips: ["100% tabiiy mato", "Barcha o'lchamlar", "14 kun qaytarish", "Original brend"],
-  },
+// --- HERO 3D PRODUCT CAROUSEL ---
+const carouselData = [
+  { title: "iPhone 15 Pro Max", price: "16 200 000 so'm", category: "Gadjetlar" },
+  { title: "Samsung Galaxy S24 Ultra", price: "15 400 000 so'm", category: "Gadjetlar" },
+  { title: "MacBook Pro 14 M3", price: "22 500 000 so'm", category: "Elektronika" },
+  { title: "AirPods Pro 2", price: "2 950 000 so'm", category: "Elektronika" },
+  { title: "Dyson V15 Detect", price: "8 900 000 so'm", category: "Maishiy texnika" },
+  { title: "Nike Pegasus 41", price: "1 290 000 so'm", category: "Kiyim-kechak" },
+  { title: "PlayStation 5 Slim", price: "6 400 000 so'm", category: "Elektronika" },
+  { title: "LG OLED TV 55\"", price: "11 200 000 so'm", category: "Maishiy texnika" },
 ];
 
-function initHeroStory() {
-  const story = document.getElementById("heroStory");
-  const word = document.getElementById("heroWord");
-  if (!story || !word) return;
+function initCarousel() {
+  const scene = document.getElementById("carouselScene");
+  const ring = document.getElementById("carouselRing");
+  if (!scene || !ring) return;
 
-  const images = Array.from(story.querySelectorAll(".hero-orb-img"));
-  const chips = Array.from(story.querySelectorAll(".hero-chip"));
-  const dots = Array.from(story.querySelectorAll(".hero-dots i"));
+  const items = Array.from(ring.querySelectorAll(".carousel-item"));
+  if (!items.length) return;
 
-  let current = -1;
-  let timers = [];
+  const dots = Array.from(document.querySelectorAll("#carouselDots i"));
+  const titleEl = document.getElementById("carouselTitle");
+  const priceEl = document.getElementById("carouselPrice");
+  const wordEl = document.getElementById("heroWord");
+  const count = items.length;
+  const step = 360 / count;
 
-  const show = (idx) => {
-    if (idx === current) return;
-    current = idx;
-    const slide = heroSlides[idx];
+  let rot = -24;
+  let target = 0;
+  let tiltX = 0;
+  let tiltY = 0;
+  let tiltTargetX = 0;
+  let tiltTargetY = 0;
+  let activeIndex = 0;
+  let dragging = false;
+  let dragStartX = 0;
+  let dragStartRot = 0;
+  let paused = false;
+  let autoTimer = null;
 
-    timers.forEach(clearTimeout);
-    timers = [];
+  const applyActive = (index) => {
+    const safe = ((index % count) + count) % count;
+    if (safe === activeIndex) return;
+    activeIndex = safe;
 
-    word.classList.add("is-swapping");
-    timers.push(
-      setTimeout(() => {
-        word.textContent = slide.name;
-        word.classList.remove("is-swapping");
-      }, 200)
-    );
+    items.forEach((item, i) => item.classList.toggle("is-active", i === safe));
+    dots.forEach((dot, i) => dot.classList.toggle("is-on", i === safe));
 
-    images.forEach((img, i) => img.classList.toggle("is-active", i === idx));
-    dots.forEach((dot, i) => dot.classList.toggle("is-on", i === idx));
+    const data = carouselData[safe];
+    if (titleEl) titleEl.textContent = data.title;
+    if (priceEl) priceEl.textContent = data.price;
+    if (wordEl) wordEl.textContent = data.category;
+  };
 
-    chips.forEach((chip, i) => {
-      chip.classList.add("is-off");
-      timers.push(
-        setTimeout(() => {
-          chip.textContent = slide.chips[i];
-          chip.classList.remove("is-off");
-        }, 160 + i * 60)
-      );
+  const loop = () => {
+    rot += (target - rot) * 0.09;
+    tiltX += (tiltTargetX - tiltX) * 0.07;
+    tiltY += (tiltTargetY - tiltY) * 0.07;
+
+    const breathe = Math.sin(performance.now() / 1900) * 1.1;
+
+    ring.style.setProperty("--rot", rot.toFixed(2) + "deg");
+    ring.style.setProperty("--tx", (tiltX + breathe).toFixed(2) + "deg");
+    ring.style.setProperty("--ty", tiltY.toFixed(2) + "deg");
+
+    items.forEach((item, i) => {
+      const angle = (((rot + i * step) % 360) + 360) % 360;
+      const facing = Math.cos((angle * Math.PI) / 180);
+      const depth = (1 - facing) / 2;
+      item.style.opacity = (1 - depth * 0.86).toFixed(3);
     });
+
+    applyActive(Math.round(-rot / step));
+    requestAnimationFrame(loop);
   };
 
-  const update = () => {
-    const span = Math.max(1, story.offsetHeight - window.innerHeight);
-    const p = Math.min(1, Math.max(0, -story.getBoundingClientRect().top / span));
-    story.style.setProperty("--p", p.toFixed(4));
-
+  const startAuto = () => {
+    if (autoTimer) clearInterval(autoTimer);
     if (reducedMotion) return;
-    const idx = Math.min(heroSlides.length - 1, Math.floor(p * heroSlides.length));
-    if (idx !== current) show(idx);
+    autoTimer = setInterval(() => {
+      if (paused || dragging) return;
+      target -= step;
+    }, 3400);
   };
 
-  let queued = false;
-  window.addEventListener(
-    "scroll",
-    () => {
-      if (queued) return;
-      queued = true;
-      requestAnimationFrame(() => {
-        queued = false;
-        update();
-      });
-    },
-    { passive: true }
-  );
-  window.addEventListener("resize", update);
+  scene.addEventListener("pointerdown", (e) => {
+    dragging = true;
+    paused = true;
+    dragStartX = e.clientX;
+    dragStartRot = target;
+    if (scene.setPointerCapture) scene.setPointerCapture(e.pointerId);
+  });
 
-  show(0);
-  update();
+  scene.addEventListener("pointermove", (e) => {
+    if (dragging) {
+      target = dragStartRot + (e.clientX - dragStartX) * 0.32;
+      return;
+    }
+    const rect = scene.getBoundingClientRect();
+    tiltTargetX = ((e.clientX - rect.left) / rect.width - 0.5) * 10;
+    tiltTargetY = -((e.clientY - rect.top) / rect.height - 0.5) * 7;
+  });
+
+  const endDrag = () => {
+    if (!dragging) return;
+    dragging = false;
+    target = -Math.round(-target / step) * step;
+    window.setTimeout(() => {
+      paused = false;
+    }, 1400);
+  };
+
+  scene.addEventListener("pointerup", endDrag);
+  scene.addEventListener("pointercancel", endDrag);
+
+  scene.addEventListener("pointerleave", () => {
+    tiltTargetX = 0;
+    tiltTargetY = 0;
+    endDrag();
+  });
+
+  document.querySelectorAll(".carousel-arrow").forEach((button) => {
+    button.addEventListener("click", () => {
+      target -= Number(button.dataset.dir) * step;
+    });
+  });
+
+  if (reducedMotion) {
+    ring.style.setProperty("--rot", "0deg");
+    items.forEach((item, i) => (item.style.opacity = i === 0 ? "1" : "0.45"));
+    return;
+  }
+
+  loop();
+  startAuto();
 }
 
 // --- CURSOR GLOW + CARD SPOTLIGHT ---

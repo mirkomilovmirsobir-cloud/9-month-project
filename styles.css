@@ -516,20 +516,50 @@
         top: 50%;
         height: clamp(9.4rem, 24vh, 15rem);
         width: clamp(5.6rem, 13.5vh, 8.6rem);
-        overflow: hidden;
-        border-radius: 1rem;
-        border: 1px solid rgba(255, 255, 255, 0.13);
-        background: #0b0e1a;
-        box-shadow: 0 30px 60px -32px rgba(0, 0, 0, 0.9);
+        overflow: visible;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
         transform: translate(-50%, -50%) rotateY(var(--a))
           translateZ(var(--radius));
-        transition: box-shadow 0.45s ease, border-color 0.45s ease,
-          opacity 0.2s linear;
+        transition: opacity 0.2s linear;
+      }
+      .carousel-item::before {
+        content: "";
+        position: absolute;
+        inset: -20%;
+        border-radius: 50%;
+        pointer-events: none;
+        opacity: 0.55;
+        background: radial-gradient(
+          closest-side,
+          rgba(168, 85, 247, 0.4),
+          rgba(34, 211, 238, 0.14) 58%,
+          transparent 80%
+        );
+        filter: blur(9px);
+        transition: opacity 0.45s ease;
       }
       .carousel-item img {
+        position: relative;
         height: 100%;
         width: 100%;
         object-fit: cover;
+        border-radius: 0.5rem;
+        -webkit-mask-image: radial-gradient(
+          ellipse 56% 58% at 50% 47%,
+          #000 66%,
+          rgba(0, 0, 0, 0.72) 88%,
+          transparent 100%
+        );
+        mask-image: radial-gradient(
+          ellipse 56% 58% at 50% 47%,
+          #000 66%,
+          rgba(0, 0, 0, 0.72) 88%,
+          transparent 100%
+        );
+        filter: drop-shadow(0 28px 38px rgba(0, 0, 0, 0.88)) saturate(1.1)
+          contrast(1.05);
         animation: itemBob 7s ease-in-out infinite;
       }
       .carousel-item:nth-child(2n) img {
@@ -551,8 +581,13 @@
       }
       .carousel-item.is-active {
         scale: 1.07;
-        border-color: rgba(196, 181, 253, 0.55);
-        box-shadow: 0 40px 90px -34px rgba(168, 85, 247, 0.95);
+      }
+      .carousel-item.is-active::before {
+        opacity: 1;
+      }
+      .carousel-item.is-active img {
+        filter: drop-shadow(0 32px 46px rgba(120, 40, 200, 0.6))
+          saturate(1.16) contrast(1.06) brightness(1.04);
       }
       .carousel-floor {
         position: absolute;
@@ -1002,9 +1037,21 @@
         -webkit-text-stroke-color: rgba(109, 40, 217, 0.2);
       }
       html.light .carousel-item {
+        overflow: hidden;
+        border-radius: 1rem;
         background: #ffffff;
-        border-color: rgba(15, 23, 42, 0.1);
-        box-shadow: 0 24px 50px -30px rgba(15, 23, 42, 0.55);
+        border: 1px solid rgba(15, 23, 42, 0.09);
+        box-shadow: 0 24px 50px -30px rgba(15, 23, 42, 0.5);
+      }
+      html.light .carousel-item::before {
+        display: none;
+      }
+      html.light .carousel-item img,
+      html.light .carousel-item.is-active img {
+        border-radius: 0;
+        -webkit-mask-image: none;
+        mask-image: none;
+        filter: none;
       }
       html.light .carousel-arrow {
         background: rgba(15, 23, 42, 0.04);

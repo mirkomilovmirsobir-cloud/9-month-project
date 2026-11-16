@@ -360,80 +360,129 @@
     <main class="relative z-10 mx-auto w-full max-w-7xl px-4 pb-16">
       <!-- ================= PRODUCTS ================= -->
       <section id="section-products" class="space-y-10 py-6 md:py-10">
-        <!-- hero scroll story -->
-        <div id="heroStory" class="hero-story">
-          <div
-            class="hero-pin hero-panel overflow-hidden rounded-[2rem] border border-white/10"
-          >
-            <div
-              class="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-brand-600/25 blur-3xl"
-            ></div>
-            <div
-              class="pointer-events-none absolute -bottom-32 left-1/4 h-72 w-72 rounded-full bg-cyan-500/10 blur-3xl"
-            ></div>
+        <!-- hero 3D carousel -->
+        <div
+          id="heroScene"
+          class="hero-scene hero-panel overflow-hidden rounded-[2rem] border border-white/10"
+        >
+          <div class="hero-halo" aria-hidden="true"></div>
 
-            <div class="hero-stage hero-area">
-              <h1 class="hero-word" id="heroWord">Gadjetlar</h1>
+          <p class="hero-kicker">
+            <span
+              class="h-1.5 w-1.5 rounded-full bg-lime-300 shadow-[0_0_12px_2px_rgba(212,255,79,0.7)]"
+            ></span>
+            Kolleksiya · 2026
+          </p>
 
-              <div id="heroTilt" class="hero-orb">
+          <div id="carouselScene" class="carousel-scene">
+            <h1 class="hero-word" id="heroWord" aria-hidden="true">Gadjetlar</h1>
+
+            <div id="carouselRing" class="carousel-ring">
+              <article
+                class="carousel-item is-active"
+                style="--a: 0deg"
+              >
                 <img
-                  class="hero-orb-img is-active"
-                  src="https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=900&auto=format&fit=crop&q=80"
+                  src="https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=600&auto=format&fit=crop&q=80"
                   alt="iPhone 15 Pro Max"
+                  loading="eager"
                 />
+              </article>
+              <article class="carousel-item" style="--a: 45deg">
                 <img
-                  class="hero-orb-img"
-                  src="https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=900&auto=format&fit=crop&q=80"
-                  alt="MacBook Pro"
+                  src="https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=600&auto=format&fit=crop&q=80"
+                  alt="Samsung Galaxy S24 Ultra"
+                  loading="lazy"
                 />
+              </article>
+              <article class="carousel-item" style="--a: 90deg">
                 <img
-                  class="hero-orb-img"
-                  src="https://images.unsplash.com/photo-1558317374-067fb5f30001?w=900&auto=format&fit=crop&q=80"
-                  alt="Dyson changyutgich"
+                  src="https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=600&auto=format&fit=crop&q=80"
+                  alt="MacBook Pro 14 M3"
+                  loading="lazy"
                 />
+              </article>
+              <article class="carousel-item" style="--a: 135deg">
                 <img
-                  class="hero-orb-img"
-                  src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=900&auto=format&fit=crop&q=80"
-                  alt="Nike krossovka"
+                  src="https://images.unsplash.com/photo-1600294037681-c80b4cb5b434?w=600&auto=format&fit=crop&q=80"
+                  alt="AirPods Pro 2"
+                  loading="lazy"
                 />
-                <span class="hero-glare" aria-hidden="true"></span>
-              </div>
-
-              <span class="hero-chip hero-chip--tl" data-depth="1.6">5000 mAh batareya</span>
-              <span class="hero-chip hero-chip--tr" data-depth="2.2">Titan korpus</span>
-              <span class="hero-chip hero-chip--bl" data-depth="2.4">24 soat yetkazish</span>
-              <span class="hero-chip hero-chip--br" data-depth="1.8">Rasmiy kafolat</span>
+              </article>
+              <article class="carousel-item" style="--a: 180deg">
+                <img
+                  src="https://images.unsplash.com/photo-1558317374-067fb5f30001?w=600&auto=format&fit=crop&q=80"
+                  alt="Dyson V15 Detect"
+                  loading="lazy"
+                />
+              </article>
+              <article class="carousel-item" style="--a: 225deg">
+                <img
+                  src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80"
+                  alt="Nike Pegasus 41"
+                  loading="lazy"
+                />
+              </article>
+              <article class="carousel-item" style="--a: 270deg">
+                <img
+                  src="https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=600&auto=format&fit=crop&q=80"
+                  alt="PlayStation 5 Slim"
+                  loading="lazy"
+                />
+              </article>
+              <article class="carousel-item" style="--a: 315deg">
+                <img
+                  src="https://images.unsplash.com/photo-1593784991095-a205069470b6?w=600&auto=format&fit=crop&q=80"
+                  alt="LG OLED Smart TV"
+                  loading="lazy"
+                />
+              </article>
             </div>
 
-            <div class="hero-bottom">
-              <p class="hero-kicker">
-                <span
-                  class="h-1.5 w-1.5 rounded-full bg-lime-300 shadow-[0_0_12px_2px_rgba(212,255,79,0.7)]"
-                ></span>
-                Yangi mavsum · 2026
-              </p>
-              <div class="hero-dots" aria-hidden="true">
-                <i class="is-on"></i><i></i><i></i><i></i>
-              </div>
-              <p class="hero-hint">Pastga suring — kolleksiya almashadi</p>
-              <div class="flex flex-wrap items-center justify-center gap-3">
-                <button
-                  onclick="switchCategory('all')"
-                  class="btn-shine group inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-brand-500 via-fuchsia-500 to-brand-600 px-6 py-3.5 text-sm font-bold text-white shadow-[0_20px_45px_-20px_rgba(168,85,247,0.95)] transition hover:-translate-y-0.5"
-                >
-                  Xaridni boshlash
-                  <i
-                    class="fa-solid fa-arrow-right text-xs transition group-hover:translate-x-1"
-                  ></i>
-                </button>
-                <button
-                  onclick="switchSection('promotions')"
-                  class="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-6 py-3.5 text-sm font-semibold text-white backdrop-blur transition hover:border-white/25 hover:bg-white/10"
-                >
-                  <i class="fa-solid fa-bolt text-amber-300"></i> Aksiyalarni ko'rish
-                </button>
-              </div>
+            <div class="carousel-floor" aria-hidden="true"></div>
+          </div>
+
+          <div class="carousel-info">
+            <h2 id="carouselTitle">iPhone 15 Pro Max</h2>
+            <p id="carouselPrice">16 200 000 so'm</p>
+          </div>
+
+          <div class="carousel-controls">
+            <button
+              type="button"
+              class="carousel-arrow"
+              data-dir="-1"
+              aria-label="Oldingi mahsulot"
+            >
+              <i class="fa-solid fa-chevron-left text-[11px]"></i>
+            </button>
+            <div class="carousel-dots" id="carouselDots" aria-hidden="true">
+              <i class="is-on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
             </div>
+            <button
+              type="button"
+              class="carousel-arrow"
+              data-dir="1"
+              aria-label="Keyingi mahsulot"
+            >
+              <i class="fa-solid fa-chevron-right text-[11px]"></i>
+            </button>
+          </div>
+
+          <div class="hero-cta">
+            <button
+              onclick="switchCategory('all')"
+              class="btn-shine group inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-brand-500 via-fuchsia-500 to-brand-600 px-6 py-3.5 text-sm font-bold text-white shadow-[0_20px_45px_-20px_rgba(168,85,247,0.95)] transition hover:-translate-y-0.5"
+            >
+              Xaridni boshlash
+              <i class="fa-solid fa-arrow-right text-xs transition group-hover:translate-x-1"></i>
+            </button>
+            <button
+              onclick="switchSection('promotions')"
+              class="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-6 py-3.5 text-sm font-semibold text-white backdrop-blur transition hover:border-white/25 hover:bg-white/10"
+            >
+              <i class="fa-solid fa-bolt text-amber-300"></i> Aksiyalarni ko'rish
+            </button>
           </div>
         </div>
 

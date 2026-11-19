@@ -2053,6 +2053,12 @@ function completeAuth(user) {
   renderProfile();
   closeAuthModal();
   setAuthError("");
+
+  if (pendingCheckout) {
+    pendingCheckout = false;
+    openCartModal();
+    showToast("Savat saqlandi — endi buyurtmani tasdiqlashingiz mumkin.", "success");
+  }
 }
 
 function handleAuthButton() {
@@ -2074,6 +2080,7 @@ function logoutUser() {
   cart = [];
   wishlist = [];
   appliedPromo = null;
+  pendingCheckout = false;
   updateHeaderUser();
   updateCartBadge();
   updateWishlistBadge();
@@ -2251,6 +2258,7 @@ function updateCartQuantity(productId, delta, color) {
 
 function toggleWishlist(productId, event) {
   if (event && event.stopPropagation) event.stopPropagation();
+  if (!requireAuth("Sevimlilarga qo'shish uchun avval kiring yoki ro'yxatdan o'ting.")) return;
   const product = productsData.find((p) => p.id === productId);
   if (!product) return;
 
@@ -2365,6 +2373,7 @@ function updateCartTotalsUI(totals) {
 function renderCartModal() {
   const container = document.getElementById("cartItemsContainer");
   if (!container) return;
+  syncCheckoutUI();
 
   if (cart.length === 0) {
     container.innerHTML = `
@@ -2415,6 +2424,11 @@ function renderCartModal() {
 }
 
 function checkoutSimulation() {
+  if (!currentUser) {
+    startGuestCheckout();
+    return;
+  }
+
   if (cart.length === 0) {
     showToast("Savat bo'sh. Avval mahsulot tanlang.", "info");
     return;
@@ -3157,6 +3171,8 @@ function ensureHeroCta() {
 function ensureMarkup() {
   ensureAuthFields();
   ensureCartPromoUI();
+  ensureGuestNotice();
+  ensureCheckoutButton();
   ensureProfileSection();
   ensureDetailModal();
   ensureHeroCategoriesSlot();
@@ -3366,6 +3382,40 @@ function injectShopStyles() {
         100% {
           box-shadow: 0 0 0 22px rgba(168, 85, 247, 0);
         }
+      }
+
+      .guest-note {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        border-radius: 0.9rem;
+        border: 1px solid rgba(251, 191, 36, 0.3);
+        background: rgba(251, 191, 36, 0.08);
+        padding: 0.6rem 0.7rem;
+        font-size: 0.66rem;
+        color: var(--ui-muted);
+      }
+      .guest-note > i {
+        color: #fbbf24;
+      }
+      .guest-note strong {
+        display: block;
+        font-size: 0.7rem;
+        color: var(--ui-ink);
+      }
+      .guest-note span {
+        font-size: 0.62rem;
+        line-height: 1.45;
+      }
+      .guest-note button {
+        margin-left: auto;
+        flex-shrink: 0;
+        border-radius: 0.6rem;
+        background: linear-gradient(90deg, #7c3aed, #c026d3);
+        padding: 0.35rem 0.65rem;
+        font-size: 0.62rem;
+        font-weight: 700;
+        color: #ffffff;
       }
 
       /* ---------- cart promo ---------- */
@@ -4196,4 +4246,82 @@ function injectShopStyles() {
       }
   `;
   document.head.appendChild(style);
+}
+
+/* ---------------- ACCOUNT GATE ----------------
+   Buyurtma berish va sevimlilar faqat hisobi bor
+   foydalanuvchilar uchun.
+   ---------------------------------------------- */
+let pendingCheckout = false;
+
+function requireAuth(message) {
+  if (currentUser) return true;
+  showToast(
+    message || "Bu amal uchun avval tizimga kiring yoki ro'yxatdan o'ting.",
+    "info"
+  );
+  openAuthModal();
+  switchAuthTab("login");
+  return false;
+}
+
+function startGuestCheckout() {
+  pendingCheckout = true;
+  closeCartModal();
+  requireAuth("Buyurtma berish uchun avval kiring yoki ro'yxatdan o'ting.");
+}
+
+function syncCheckoutUI() {
+  const note = document.getElementById("guestCheckoutNote");
+  if (note) note.classList.toggle("hidden", Boolean(currentUser));
+
+  const checkoutBtn = document.getElementById("checkoutBtn");
+  if (!checkoutBtn) return;
+
+  checkoutBtn.innerHTML = currentUser
+    ? "Buyurtmani rasmiylashtirish"
+    : '<i class="fa-solid fa-right-to-bracket"></i> Kirish va buyurtma berish';
+  checkoutBtn.onclick = () => (currentUser ? checkoutSimulation() : startGuestCheckout());
+}
+
+function ensureGuestNotice() {
+  const modal = document.getElementById("cartModal");
+  if (!modal || document.getElementById("guestCheckoutNote")) return;
+
+  const note = document.createElement("div");
+  note.id = "guestCheckoutNote";
+  note.className = "guest-note hidden";
+  note.innerHTML = `
+    <i class="fa-solid fa-lock"></i>
+    <div>
+      <strong>Hisob kerak</strong>
+      <span>Buyurtma berish va sevimlilar uchun avval kiring yoki ro'yxatdan o'ting.</span>
+    </div>
+    <button type="button" onclick="startGuestCheckout()">Kirish</button>`;
+
+  const promo = document.getElementById("promoInput");
+  const anchor = promo ? promo.closest(".promo-box") : null;
+  if (anchor && anchor.parentElement) {
+    anchor.parentElement.insertBefore(note, anchor);
+    return;
+  }
+
+  const total = document.getElementById("cartTotalPrice");
+  const row = total ? total.closest("div") : null;
+  if (row && row.parentElement) row.parentElement.insertBefore(note, row);
+}
+
+function ensureCheckoutButton() {
+  const modal = document.getElementById("cartModal");
+  if (!modal) return;
+  const button = Array.from(modal.querySelectorAll("button")).find((btn) =>
+    /Buyurtmani rasmiylashtirish|Kirish va buyurtma/.test(btn.textContent)
+  );
+  if (button) button.id = "checkoutBtn";
+}
+
+function openWishlistModal() {
+  if (!requireAuth("Sevimlilarni ko'rish uchun avval kiring yoki ro'yxatdan o'ting.")) return;
+  renderWishlistModal();
+  openModal("wishlistModal");
 }

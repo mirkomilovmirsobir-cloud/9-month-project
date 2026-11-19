@@ -286,7 +286,7 @@
             </button>
             <button
               id="authHeaderBtn"
-              onclick="openAuthModal()"
+              onclick="handleAuthButton()"
               class="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-3.5 py-2.5 text-xs font-semibold text-white transition hover:border-white/25 hover:bg-white/[0.09]"
             >
               <i class="fa-regular fa-user text-sm"></i>
@@ -350,6 +350,10 @@
               <button onclick="switchSection('b2b')" class="nav-sec-btn">
                 <i class="fa-solid fa-building-columns text-[10px] text-purple-400"></i>
                 Biznes uchun
+              </button>
+              <button onclick="switchSection('profile')" class="nav-sec-btn">
+                <i class="fa-solid fa-receipt text-[10px] text-brand-300"></i>
+                Buyurtmalarim
               </button>
             </div>
           </div>
@@ -471,7 +475,7 @@
 
           <div class="hero-cta">
             <button
-              onclick="switchCategory('all')"
+              onclick="startShopping()"
               class="btn-shine group inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-brand-500 via-fuchsia-500 to-brand-600 px-6 py-3.5 text-sm font-bold text-white shadow-[0_20px_45px_-20px_rgba(168,85,247,0.95)] transition hover:-translate-y-0.5"
             >
               Xaridni boshlash
@@ -484,6 +488,12 @@
               <i class="fa-solid fa-bolt text-amber-300"></i> Aksiyalarni ko'rish
             </button>
           </div>
+
+          <div
+            class="hero-cats"
+            id="heroCategories"
+            aria-label="Har kategoriyadan tanlangan mahsulotlar"
+          ></div>
         </div>
 
         <!-- stats -->
@@ -728,6 +738,18 @@
           id="productGrid"
           class="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4"
         ></div>
+      </section>
+
+      <!-- ================= PROFILE / ORDERS ================= -->
+      <section id="section-profile" class="hidden space-y-6 py-6 md:py-10">
+        <div class="profile-head">
+          <p>hisobim</p>
+          <h2 id="profileTitle">Mening hisobim</h2>
+          <p id="profileSubtitle">
+            Buyurtmalar, promokodlar va saqlangan ma'lumotlaringiz shu yerda.
+          </p>
+        </div>
+        <div id="profileBody" class="space-y-3"></div>
       </section>
 
       <!-- ================= VACANCIES ================= -->
@@ -1360,8 +1382,9 @@
           SmartMarket'ga xush kelibsiz
         </h2>
         <p class="mt-1 text-xs text-slate-500">
-          Buyurtmalarni kuzatish uchun hisobingizga kiring.
+          Savat, sevimlilar va buyurtmalar hisobingizda saqlanadi.
         </p>
+        <p id="authError" class="auth-error mt-3 hidden"></p>
         <div class="mt-5 flex rounded-2xl border border-white/10 bg-white/[0.04] p-1">
           <button
             id="tabLoginBtn"
@@ -1391,7 +1414,14 @@
           </div>
           <div>
             <label class="field-label">Parol</label>
-            <input type="password" required placeholder="••••••••" class="field" />
+            <input
+              type="password"
+              required
+              id="loginPasswordInput"
+              autocomplete="current-password"
+              placeholder="••••••••"
+              class="field"
+            />
           </div>
           <button
             type="submit"
@@ -1416,12 +1446,26 @@
             />
           </div>
           <div>
-            <label class="field-label">Telefon raqam</label>
-            <input type="tel" required placeholder="+998 90 123 45 67" class="field" />
+            <label class="field-label">Telefon raqam yoki email</label>
+            <input
+              type="text"
+              required
+              id="regPhoneInput"
+              autocomplete="username"
+              placeholder="+998 90 123 45 67"
+              class="field"
+            />
           </div>
           <div>
             <label class="field-label">Parol yaratish</label>
-            <input type="password" required placeholder="••••••••" class="field" />
+            <input
+              type="password"
+              required
+              id="regPasswordInput"
+              autocomplete="new-password"
+              placeholder="Kamida 4 belgi"
+              class="field"
+            />
           </div>
           <button
             type="submit"
@@ -1487,6 +1531,33 @@
           class="my-4 flex-grow space-y-3 overflow-y-auto pr-1"
         ></div>
         <div class="space-y-3 border-t border-white/5 pt-4">
+          <div class="promo-box">
+            <div class="promo-box-head">
+              <i class="fa-solid fa-ticket"></i> Promokod
+            </div>
+            <div class="promo-form">
+              <input
+                id="promoInput"
+                class="promo-input"
+                type="text"
+                placeholder="Masalan: SMART10"
+                autocomplete="off"
+                onkeydown="if (event.key === 'Enter') { event.preventDefault(); applyPromoCode(); }"
+              />
+              <button type="button" class="promo-apply" onclick="applyPromoCode()">
+                Qo'llash
+              </button>
+            </div>
+            <p id="promoMessage" class="promo-msg"></p>
+            <div id="promoHints" class="promo-hints"></div>
+          </div>
+          <div class="cart-total-row">
+            <span>Mahsulotlar</span><span id="cartSubtotal">0 so'm</span>
+          </div>
+          <div class="cart-total-row is-discount hidden" id="cartDiscountRow">
+            <span id="cartDiscountLabel">Chegirma</span>
+            <span id="cartDiscountValue">0 so'm</span>
+          </div>
           <div class="flex items-center justify-between text-sm font-semibold">
             <span class="text-slate-400">Jami to'lov:</span>
             <span
@@ -1549,6 +1620,56 @@
             Arizani yuborish
           </button>
         </form>
+      </div>
+    </div>
+
+    <!-- ============ PRODUCT DETAIL ============ -->
+    <div
+      id="productDetailModal"
+      data-modal
+      class="fixed inset-0 z-[60] hidden items-stretch justify-center bg-ink-950/80 backdrop-blur-md sm:items-center sm:p-4"
+    >
+      <div class="detail-sheet relative">
+        <div class="detail-topbar">
+          <button
+            type="button"
+            onclick="closeProductDetail()"
+            class="detail-back"
+            aria-label="Orqaga qaytish"
+            title="Orqaga"
+          >
+            <i class="fa-solid fa-arrow-left"></i>
+          </button>
+          <div class="detail-bar-text">
+            <p id="detailTopCategory">Kategoriya</p>
+            <h2 id="detailTitleBar">Mahsulot</h2>
+          </div>
+          <button
+            type="button"
+            onclick="buyNow()"
+            class="detail-back"
+            aria-label="Hoziroq xarid qilish"
+            title="Hoziroq xarid"
+          >
+            <i class="fa-solid fa-bolt"></i>
+          </button>
+        </div>
+        <div id="productDetailBody" class="detail-body"></div>
+        <div class="detail-footer">
+          <div class="detail-footer-price">
+            <span>Narx</span>
+            <strong id="detailFooterPrice">—</strong>
+            <p id="detailFooterColor" class="detail-footer-color">—</p>
+          </div>
+          <div class="detail-footer-actions">
+            <button type="button" class="detail-ghost" onclick="buyNow()">
+              Hoziroq xarid
+            </button>
+            <button type="button" class="detail-primary" onclick="addDetailToCart()">
+              <i class="fa-solid fa-cart-plus"></i> Savatga
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 

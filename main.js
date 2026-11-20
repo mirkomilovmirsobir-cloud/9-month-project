@@ -50,9 +50,9 @@ const productsData = [
     reviews: 94,
     isNew: true,
     images: [
-      shot("1610945265064-0e34e5519bbf"),
-      shot("1580910051074-3eb694886505"),
-      shot("1512499617640-c74ae3a79d37"),
+      "images/samsung-s24-ultra-titanium.jpg",
+      "images/samsung-s24-ultra-violet.jpg",
+      "images/samsung-s24-ultra-s-pen.jpg",
     ],
     colors: [
       { name: "Titanium Gray", hex: "#5d6167" },
@@ -1357,8 +1357,7 @@ const carouselData = [
     category: "Gadjetlar",
     wash: "#e3f0ff",
     specs: ["12/512 GB", "S Pen", "AMOLED"],
-    image:
-      "https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=700&auto=format&fit=crop&q=80",
+    image: "images/samsung-s24-ultra-titanium.jpg",
   },
   {
     title: "MacBook Pro 14 M3",

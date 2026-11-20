@@ -27,9 +27,8 @@ const productsData = [
     isNew: true,
     heroPick: true,
     images: [
-      shot("1592750475338-74b7b21085ab"),
-      shot("1511707171634-5f897ff02aa9"),
-      shot("1601784551446-20c9e07cdbdb"),
+      "images/iphone-15-pro-max-titanium.jpg",
+      "images/iphone-15-pro-black-titanium.jpg",
     ],
     colors: [
       { name: "Natural Titanium", hex: "#b9b2a7" },
@@ -121,9 +120,9 @@ const productsData = [
     reviews: 88,
     isNew: true,
     images: [
-      shot("1580910051074-3eb694886505", "right"),
-      shot("1511707171634-5f897ff02aa9", "left"),
-      shot("1592750475338-74b7b21085ab", "right"),
+      "images/xiaomi-14t-pro-blue.jpg",
+      "images/xiaomi-14t-pro-green.jpg",
+      "images/xiaomi-14t-pro-black.jpg",
     ],
     colors: [
       { name: "Titan Blue", hex: "#3b5f8a" },
@@ -249,21 +248,21 @@ const productsData = [
   },
   {
     id: 16,
-    brand: "Dell",
-    title: "Dell UltraSharp 27 4K USB-C Monitor",
+    brand: "Apple",
+    title: "Apple iMac 27 dyuym 5K Retina displey",
     category: "elektronika",
-    price: 5200000,
-    oldPrice: 5900000,
+    price: 12900000,
+    oldPrice: 14500000,
     rating: 4.6,
     reviews: 47,
-    images: [shot("1527443224154-c4a3942d3acf"), shot("1547082299-de196ea013d6", "left"), shot("1587829741301-dc798b83add3", "right")],
+    images: ["images/imac-27-retina.jpg"],
     colors: [
       { name: "Kumush", hex: "#c9ccd1" },
-      { name: "Qora", hex: "#26282c" },
+      { name: "Kosmos kulrang", hex: "#55585c" },
     ],
-    specs: ["27 dyuym", "4K IPS", "99% sRGB", "USB-C 90 Vt"],
+    specs: ["27 dyuym", "5K Retina", "4.5K panel", "macOS"],
     description:
-      "27 dyuymli 4K IPS panel, 99% sRGB qamrov va USB-C orqali 90 Vt quvvat. Dizaynerlar uchun aniq rang va qulay stend.",
+      "27 dyuymli 5K Retina displey, ingichka korpus va kumush stend. Dizayn, video va ofis ishlari uchun aniq rang va katta ish maydoni.",
   },
 
   /* ---------------- MAISHIY TEXNIKA ---------------- */
@@ -285,40 +284,43 @@ const productsData = [
   },
   {
     id: 7,
-    brand: "Dyson",
-    title: "Dyson V15 Detect Akkumulyatorli Changyutgich",
+    brand: "SmartMarket",
+    title: "Robot Changyutgich Pro — Supurish va Yuvish To'plami",
     category: "maishiy",
-    price: 8900000,
-    oldPrice: 9800000,
+    price: 3900000,
+    oldPrice: 4600000,
     rating: 4.9,
     reviews: 38,
-    images: [shot("1558317374-067fb5f30001"), shot("1558317374-067fb5f30001", "left"), shot("1558317374-067fb5f30001", "right")],
-    colors: [
-      { name: "Nickel", hex: "#9aa0a6" },
-      { name: "Oltin", hex: "#c08b3c" },
+    images: [
+      "images/robot-vacuum-kit.jpg",
+      "images/robot-vacuum-home.jpg",
     ],
-    specs: ["60 daqiqa", "Lazer sensor", "0.76 l konteyner", "2 nasadka"],
+    colors: [
+      { name: "Oq", hex: "#f2f3f5" },
+      { name: "Qora", hex: "#26282c" },
+    ],
+    specs: ["Supurish + yuvish", "Stansiya bilan", "Yon cho'tkalar", "Tozalash to'plami"],
     description:
-      "Lazerli sensor changni ko'rsatadi, batareya 60 daqiqagacha ishlaydi. Yumshoq va qattiq pollar uchun ikki xil nasadka to'plamda.",
+      "Supuradi va yuvadi, o'zi stansiyaga qaytib quvvatlanadi. To'plamda zaryadlash stansiyasi, filtr, latta va yon cho'tkalar bor — uy pollari uchun to'liq yechim.",
   },
   {
     id: 17,
-    brand: "Samsung",
-    title: "Samsung Bespoke Kir Yuvish Mashinasi 9kg",
+    brand: "Bosch",
+    title: "Bosch Serie 2 Kir Yuvish Mashinasi 8kg",
     category: "maishiy",
     price: 7400000,
     oldPrice: 8300000,
     rating: 4.8,
     reviews: 64,
     isNew: true,
-    images: [shot("1626806787461-102c1bfaaea1"), shot("1610557892470-55d9e80c0bce"), shot("1585515320310-259814833e62")],
+    images: ["images/bosch-washing-machine.jpg"],
     colors: [
+      { name: "Kumush", hex: "#b9bdc2" },
       { name: "Oq", hex: "#f1f2f4" },
-      { name: "Grafit", hex: "#4b4f55" },
     ],
-    specs: ["9 kg", "EcoBubble", "Bug' bilan tozalash", "A+++ klass"],
+    specs: ["8 kg", "EcoSilence Drive", "15 daqiqada yuvish", "A+++ klass"],
     description:
-      "9 kg sig'im, EcoBubble texnologiyasi va bug' bilan dezinfeksiya. Jim rejimda kechqurun ham ishlatish mumkin.",
+      "8 kg sig'im va jim EcoSilence Drive motori. 15 daqiqali tez dastur kundalik kiyimlar uchun, kechqurun ham bezovta qilmaydi.",
   },
   {
     id: 18,
@@ -1347,8 +1349,7 @@ const carouselData = [
     category: "Gadjetlar",
     wash: "#e7e4ff",
     specs: ["256 GB", "Titan", "2 yil kafolat"],
-    image:
-      "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=700&auto=format&fit=crop&q=80",
+    image: "images/iphone-15-pro-max-titanium.jpg",
   },
   {
     title: "Samsung Galaxy S24 Ultra",
@@ -1378,13 +1379,12 @@ const carouselData = [
       "https://images.unsplash.com/photo-1600294037681-c80b4cb5b434?w=700&auto=format&fit=crop&q=80",
   },
   {
-    title: "Dyson V15 Detect",
-    price: "8 900 000 so'm",
+    title: "Robot Changyutgich Pro",
+    price: "3 900 000 so'm",
     category: "Maishiy texnika",
     wash: "#fff0e3",
-    specs: ["Akkumulyator", "Lazer", "60 daqiqa"],
-    image:
-      "https://images.unsplash.com/photo-1558317374-067fb5f30001?w=700&auto=format&fit=crop&q=80",
+    specs: ["Supurish + yuvish", "Stansiya", "To'plam"],
+    image: "images/robot-vacuum-kit.jpg",
   },
   {
     title: "Canon EOS R50",

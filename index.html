@@ -123,6 +123,113 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body class="min-h-screen pb-0 text-slate-200">
+    <!-- ============ 5 SEKUNDLIK YUKLASH EKRANI ============ -->
+    <div
+      id="bootScreen"
+      class="boot-screen"
+      role="status"
+      aria-live="polite"
+      aria-label="SmartMarket yuklanmoqda"
+    >
+      <div class="boot-glow" aria-hidden="true"></div>
+      <div class="boot-inner">
+        <div class="boot-brand">
+          <span class="boot-mark"><i class="fa-solid fa-bag-shopping"></i></span>
+          <span class="boot-name">Smart<span>Market</span></span>
+        </div>
+        <p class="boot-tagline">
+          Gadjetlar, elektronika, maishiy texnika va moda — bir joyda.
+        </p>
+        <div class="boot-ring">
+          <svg viewBox="0 0 120 120" aria-hidden="true">
+            <circle class="boot-ring-track" cx="60" cy="60" r="52"></circle>
+            <circle id="bootRingFill" class="boot-ring-fill" cx="60" cy="60" r="52"></circle>
+          </svg>
+          <div class="boot-ring-text"><strong id="bootPercent">0</strong><span>%</span></div>
+        </div>
+        <p id="bootStatus" class="boot-status">
+          Mahsulotlar yuklanmoqda<span class="boot-dots"><i></i><i></i><i></i></span>
+        </p>
+        <div class="boot-bar"><span id="bootBar"></span></div>
+        <div class="boot-foot">
+          <span><i class="fa-solid fa-truck-fast"></i> Bepul yetkazish</span>
+          <span><i class="fa-solid fa-shield-halved"></i> Rasmiy kafolat</span>
+          <span><i class="fa-solid fa-credit-card"></i> 0% muddatli to'lov</span>
+        </div>
+      </div>
+    </div>
+    <script>
+      /* 5 sekundlik yuklash ekrani — main.js dan mustaqil ishlaydi */
+      (function () {
+        var DURATION = 5000;
+        var root = document.documentElement;
+        var started = Date.now();
+        var finished = false;
+        var ring = document.getElementById("bootRingFill");
+        var CIRC = 2 * Math.PI * 52;
+        var bar = document.getElementById("bootBar");
+        var pctEl = document.getElementById("bootPercent");
+        var statusEl = document.getElementById("bootStatus");
+        var stages = [
+          [0, "Mahsulotlar yuklanmoqda"],
+          [32, "Narxlar va chegirmalar tekshirilmoqda"],
+          [62, "Savat va sevimlilar tiklanmoqda"],
+          [88, "Interfeys tayyorlanmoqda"]
+        ];
+
+        root.classList.add("boot-lock");
+        if (ring) {
+          ring.style.strokeDasharray = CIRC.toFixed(2);
+          ring.style.strokeDashoffset = CIRC.toFixed(2);
+        }
+
+        function finish() {
+          if (finished) return;
+          finished = true;
+          root.classList.remove("boot-lock");
+          var el = document.getElementById("bootScreen");
+          if (el) {
+            el.classList.add("is-done");
+            window.setTimeout(function () {
+              if (el && el.parentNode) el.parentNode.removeChild(el);
+            }, 900);
+          }
+          try {
+            window.dispatchEvent(new Event("smartmarket:loaded"));
+          } catch (e) {}
+        }
+
+        function frame() {
+          var progress = Math.min(1, (Date.now() - started) / DURATION);
+          var eased = 1 - Math.pow(1 - progress, 2.2);
+          var pct = Math.round(eased * 100);
+
+          if (bar) bar.style.width = pct + "%";
+          if (pctEl) pctEl.textContent = pct;
+          if (ring) ring.style.strokeDashoffset = (CIRC * (1 - eased)).toFixed(2);
+
+          if (statusEl && statusEl.firstChild) {
+            var label = stages[0][1];
+            for (var i = 0; i < stages.length; i++) {
+              if (pct >= stages[i][0]) label = stages[i][1];
+            }
+            if (pct >= 100) label = "Xush kelibsiz!";
+            statusEl.firstChild.nodeValue = label;
+          }
+
+          if (progress < 1) {
+            window.requestAnimationFrame
+              ? window.requestAnimationFrame(frame)
+              : window.setTimeout(frame, 60);
+          } else {
+            finish();
+          }
+        }
+
+        frame();
+        window.setTimeout(finish, DURATION + 2000);
+      })();
+    </script>
     <!-- ambient layers -->
     <div class="bg-aurora" aria-hidden="true">
       <span class="blob blob-1 animate-drift1"></span>

@@ -4325,3 +4325,912 @@ function openWishlistModal() {
   renderWishlistModal();
   openModal("wishlistModal");
 }
+/* =========================================================
+   SMARTMARKET AI YORDAMCHI
+   Do'kon ichida ishlaydigan yordamchi: katalogdan mahsulot
+   topadi, narx/chegirma, yetkazish, to'lov, promokod va
+   buyurtma holati bo'yicha o'zbek tilida javob beradi.
+   ========================================================= */
+const AI_CYR = {
+  а: "a", б: "b", в: "v", г: "g", д: "d", е: "e", ё: "yo", ж: "j", з: "z",
+  и: "i", й: "y", к: "k", л: "l", м: "m", н: "n", о: "o", п: "p", р: "r",
+  с: "s", т: "t", у: "u", ф: "f", х: "x", ц: "ts", ч: "ch", ш: "sh", щ: "sh",
+  ъ: "", ы: "i", ь: "", э: "e", ю: "yu", я: "ya", ў: "o", қ: "q", ғ: "g", ҳ: "h",
+};
+
+function aiNorm(value) {
+  return String(value == null ? "" : value)
+    .toLowerCase()
+    .replace(/[а-яёўқғҳ]/g, (ch) => (AI_CYR[ch] === undefined ? ch : AI_CYR[ch]))
+    .replace(/[‘’ʻʼ'`´]/g, "")
+    .replace(/[^a-z0-9 ]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const AI_STOP = new Set(
+  (
+    "uchun men menga senga kerak bormi bor nima qanday qanaqa yaxshi eng bir bilan " +
+    "dan ga ni narxi narx mahsulot mahsulotlar sotib olmoqchiman xohlayman iltimos " +
+    "bering korsat kursat izlayapman kerakli qilib qandaydir mayli ok please " +
+    "mumkinmi boladimi ayting aytib"
+  ).split(" ")
+);
+
+const AI_SYNONYMS = {
+  gadgetlar: "telefon smartfon iphone samsung quloqchin naushnik airpods soat watch planshet gadjet aqlli".split(" "),
+  elektronika: "noutbuk laptop kompyuter monitor televizor tv ekran kamera audio dinamik elektronika".split(" "),
+  maishiy: "changyutgich robot blender kofe muzlatgich kir yuvish dazmol oshxona maishiy texnika".split(" "),
+  kiyim: "kurtka shim jinsi koylak futbolka krossovka poyabzal sumka kiyim moda".split(" "),
+};
+
+let aiIndex = null;
+
+function aiBuildIndex() {
+  if (aiIndex) return aiIndex;
+  aiIndex = productsData.map((product) => {
+    const category = categoriesData.find((c) => c.id === product.category);
+    return {
+      product,
+      title: aiNorm(`${product.brand} ${product.title}`),
+      category: aiNorm(`${category ? category.title : ""} ${product.category}`),
+      blob: aiNorm(
+        [
+          product.brand,
+          product.title,
+          category ? category.title : "",
+          product.category,
+          (product.specs || []).join(" "),
+          product.description || "",
+          (AI_SYNONYMS[product.category] || []).join(" "),
+        ].join(" ")
+      ),
+    };
+  });
+  return aiIndex;
+}
+
+/* "1 milliongacha", "500 ming", "2-3 mln" kabi byudjetni o'qish */
+function aiBudget(text) {
+  const normalized = aiNorm(text);
+  const chunks = normalized.match(/\d+(?:\.\d+)?\s*(million|mln|ming|k)?/g) || [];
+  const values = [];
+
+  chunks.forEach((chunk) => {
+    const match = chunk.match(/(\d+(?:\.\d+)?)\s*(million|mln|ming|k)?/);
+    if (!match) return;
+    let value = parseFloat(match[1]);
+    const unit = match[2] || "";
+    if (unit === "million" || unit === "mln") value *= 1000000;
+    else if (unit === "ming") value *= 1000;
+    else if (unit === "k" && value < 1000) value *= 1000;
+    if (!isFinite(value) || value <= 0) return;
+    if (!unit && value < 50000) return;
+    values.push(Math.round(value));
+  });
+
+  if (!values.length) return null;
+
+  const max = Math.max.apply(null, values);
+  const min = values.length > 1 ? Math.min.apply(null, values) : 0;
+  const wantsCheap = /(gacha|arzon|tagida|ostida|budjet|byudjet|tejamkor)/.test(normalized);
+  const wantsHigh = /(dan|qimmat|yuqori|boshlab|tepadan)/.test(normalized);
+
+  if (values.length > 1) return { min: min, max: max };
+  if (wantsHigh && !wantsCheap) return { min: max, max: Infinity };
+  return { min: 0, max: max };
+}
+
+function aiBudgetLabel(budget) {
+  if (!budget) return "";
+  if (!isFinite(budget.max)) return money(budget.min) + " dan yuqori";
+  if (budget.min) return money(budget.min) + " – " + money(budget.max);
+  return money(budget.max) + " gacha";
+}
+
+function aiSearchProducts(text) {
+  const normalized = aiNorm(text);
+  const budget = aiBudget(text);
+  const tokens = normalized
+    .split(" ")
+    .filter((word) => word.length > 2 && !AI_STOP.has(word) && !/^\d+$/.test(word));
+
+  let rows = aiBuildIndex();
+  if (budget) {
+    rows = rows.filter(
+      (row) =>
+        row.product.price <= budget.max &&
+        row.product.price >= (budget.min || 0)
+    );
+  }
+
+  if (!tokens.length) {
+    if (!budget) return [];
+    return rows
+      .slice()
+      .sort((a, b) => a.product.price - b.product.price)
+      .slice(0, 3)
+      .map((row) => row.product);
+  }
+
+  const scored = rows
+    .map((row) => {
+      let score = 0;
+      tokens.forEach((token) => {
+        if (row.title.indexOf(token) !== -1) score += 5;
+        else if (row.category.indexOf(token) !== -1) score += 3;
+        else if (row.blob.indexOf(token) !== -1) score += 1;
+      });
+      if (tokens.every((token) => row.blob.indexOf(token) !== -1)) score += 3;
+      return { row: row, score: score };
+    })
+    .filter((entry) => entry.score > 0);
+
+  scored.sort(
+    (a, b) => b.score - a.score || b.row.product.rating - a.row.product.rating
+  );
+
+  return scored.slice(0, 3).map((entry) => entry.row.product);
+}
+
+function aiDetectCategory(text) {
+  const normalized = aiNorm(text);
+  for (let i = 0; i < categoriesData.length; i++) {
+    const category = categoriesData[i];
+    if (normalized.indexOf(aiNorm(category.title)) !== -1) return category.id;
+  }
+  for (const product of productsData) {
+    const category = product.category;
+    const words = AI_SYNONYMS[category] || [];
+    for (let i = 0; i < words.length; i++) {
+      if (normalized.indexOf(aiNorm(words[i])) !== -1) return category;
+    }
+  }
+  return null;
+}
+
+function aiCategoryTitle(id) {
+  const category = categoriesData.find((c) => c.id === id);
+  return category ? category.title : "Barcha mahsulotlar";
+}
+
+function aiDefaultChips() {
+  return [
+    { label: "Eng arzon telefon", send: "eng arzon telefon" },
+    { label: "Yetkazib berish", send: "yetkazib berish qanday ishlaydi" },
+    { label: "Promokodlar", send: "qanday promokodlar bor" },
+    { label: "Muddatli to'lov", send: "muddatli to'lov bormi" },
+  ];
+}
+
+function aiHost() {
+  return document.getElementById("aiMessages");
+}
+
+function aiScroll() {
+  const host = aiHost();
+  if (host) host.scrollTop = host.scrollHeight;
+}
+
+function aiRenderChips(items) {
+  const host = document.getElementById("aiChips");
+  if (!host) return;
+  host.innerHTML = "";
+  (items || []).forEach((item) => {
+    if (!item || !item.label) return;
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "ai-chip";
+    chip.textContent = item.label;
+    chip.onclick = () => {
+      if (item.run) item.run();
+      else aiSend(item.send || item.label);
+    };
+    host.appendChild(chip);
+  });
+}
+
+function aiSay(html, chips, extraClass) {
+  const host = aiHost();
+  if (!host) return null;
+  const bubble = document.createElement("div");
+  bubble.className = "ai-msg ai-msg-bot" + (extraClass ? " " + extraClass : "");
+  bubble.innerHTML = html;
+  host.appendChild(bubble);
+  aiScroll();
+  if (chips) aiRenderChips(chips);
+  return bubble;
+}
+
+function aiPushUser(text) {
+  const host = aiHost();
+  if (!host) return;
+  aiRenderChips([]);
+  const bubble = document.createElement("div");
+  bubble.className = "ai-msg ai-msg-user";
+  bubble.textContent = text;
+  host.appendChild(bubble);
+  aiScroll();
+}
+
+function aiShowTyping() {
+  const host = aiHost();
+  const bubble = document.createElement("div");
+  bubble.className = "ai-msg ai-msg-bot ai-typing";
+  bubble.innerHTML = '<span class="ai-typing-dots"><i></i><i></i><i></i></span>';
+  if (host) {
+    host.appendChild(bubble);
+    aiScroll();
+  }
+  return bubble;
+}
+
+function aiProductCard(product) {
+  const category = categoriesData.find((c) => c.id === product.category);
+  return `
+    <div class="ai-product" role="button" tabindex="0"
+         onclick="aiOpenProduct(${product.id})"
+         onkeydown="if(event.key==='Enter'){aiOpenProduct(${product.id})}">
+      <img src="${product.image}" alt="" loading="lazy" />
+      <span class="ai-product-body">
+        <span class="ai-product-title">${escapeHtml(product.title)}</span>
+        <span class="ai-product-price">${money(product.price)}</span>
+        <span class="ai-product-meta">★ ${product.rating} · ${escapeHtml(
+    category ? category.title : ""
+  )}</span>
+      </span>
+      <button type="button" class="ai-product-add" aria-label="Savatga qo'shish"
+              onclick="event.stopPropagation(); aiAddProduct(${product.id})">
+        <i class="fa-solid fa-cart-plus"></i>
+      </button>
+    </div>`;
+}
+
+function aiProductAnswer(products, intro) {
+  const list = (products || []).slice(0, 3);
+  if (!list.length) {
+    aiSay(
+      "Bu shartlarga mos mahsulot topilmadi. Narx chegarasini oshirib yoki boshqacha yozib ko'ring.",
+      aiDefaultChips()
+    );
+    return;
+  }
+  aiSay(
+    `${intro}${list.map(aiProductCard).join("")}`,
+    [
+      {
+        label: "Savatni ochish",
+        run: () => {
+          closeAiAssistant();
+          openCartModal();
+        },
+      },
+      {
+        label: "Katalogni ko'rish",
+        run: () => {
+          closeAiAssistant();
+          startShopping();
+        },
+      },
+    ],
+    "ai-msg-wide"
+  );
+}
+
+function aiOpenProduct(productId) {
+  closeAiAssistant();
+  openProductDetail(productId);
+}
+
+function aiAddProduct(productId) {
+  const product = productsData.find((p) => p.id === productId);
+  if (!product) return;
+  addToCart(productId);
+  aiSay(`✅ <strong>${escapeHtml(product.title)}</strong> savatga qo'shildi.`, [
+    {
+      label: "Savatni ochish",
+      run: () => {
+        closeAiAssistant();
+        openCartModal();
+      },
+    },
+  ]);
+}
+
+function aiCartAnswer() {
+  if (!cart.length) {
+    aiSay("🛒 Savatingiz hozircha bo'sh. Katalogdan mahsulot tanlab, savatga qo'shishingiz mumkin.", [
+      {
+        label: "Katalogga o'tish",
+        run: () => {
+          closeAiAssistant();
+          startShopping();
+        },
+      },
+    ]);
+    return;
+  }
+
+  const totals = cartTotals();
+  const count = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const chips = [
+    {
+      label: "Savatni ochish",
+      run: () => {
+        closeAiAssistant();
+        openCartModal();
+      },
+    },
+  ];
+  if (!currentUser) {
+    chips.push({
+      label: "Kirish",
+      run: () => {
+        closeAiAssistant();
+        openAuthModal();
+        switchAuthTab("login");
+      },
+    });
+  }
+
+  aiSay(
+    `🛒 Savatingizda <strong>${count} ta</strong> mahsulot bor.<br>` +
+      `Jami: <strong>${money(totals.total)}</strong>` +
+      (totals.discount ? `<br>Chegirma: −${money(totals.discount)}` : "") +
+      (currentUser
+        ? ""
+        : "<br><br>⚠️ Buyurtma berish uchun avval tizimga kiring."),
+    chips
+  );
+}
+
+function aiOrderStatus() {
+  if (!currentUser) {
+    aiSay(
+      "📦 Buyurtmalar tarixini ko'rish uchun avval tizimga kiring. Hisobingiz bo'lsa, barcha buyurtmalar saqlanib qoladi.",
+      [
+        {
+          label: "Kirish",
+          run: () => {
+            closeAiAssistant();
+            openAuthModal();
+            switchAuthTab("login");
+          },
+        },
+      ]
+    );
+    return;
+  }
+
+  const orders = currentUser.orders || [];
+  if (!orders.length) {
+    aiSay("Hozircha buyurtmalaringiz yo'q. Katalogdan mahsulot tanlab, savat orqali buyurtma berishingiz mumkin.", [
+      {
+        label: "Katalogga o'tish",
+        run: () => {
+          closeAiAssistant();
+          startShopping();
+        },
+      },
+    ]);
+    return;
+  }
+
+  const lines = orders
+    .slice(0, 3)
+    .map(
+      (order) =>
+        `<strong>${escapeHtml(order.id)}</strong> · ${escapeHtml(
+          order.status || "Qabul qilindi"
+        )}<br><span style="opacity:.75">${formatDate(order.date)} · ${money(
+          order.total || 0
+        )}</span>`
+    )
+    .join("<br><br>");
+
+  aiSay(`📦 <strong>So'nggi buyurtmalaringiz:</strong><br>${lines}`, [
+    {
+      label: "Buyurtmalarim",
+      run: () => {
+        closeAiAssistant();
+        switchSection("profile");
+      },
+    },
+  ]);
+}
+
+function aiHowToOrder() {
+  const steps =
+    "1. Katalogdan mahsulotni tanlab, <strong>Savatga</strong> qo'shing.<br>" +
+    "2. Savatni ochib, promokodni kiriting (agar mavjud bo'lsa).<br>" +
+    "3. <strong>Buyurtmani rasmiylashtirish</strong> tugmasini bosing.<br>" +
+    "4. Buyurtma raqami beriladi — holatni <strong>Buyurtmalarim</strong> bo'limida kuzatasiz.";
+
+  aiSay(
+    `🛒 <strong>Buyurtma berish tartibi:</strong><br>${steps}<br><br>` +
+      (currentUser
+        ? "Hisobingizga kirgansiz, hammasi tayyor."
+        : "⚠️ Buyurtma berish uchun hisobingizga kirgan bo'lishingiz kerak."),
+    [
+      {
+        label: "Savatni ochish",
+        run: () => {
+          closeAiAssistant();
+          openCartModal();
+        },
+      },
+      currentUser
+        ? { label: "Buyurtmalarim", run: () => { closeAiAssistant(); switchSection("profile"); } }
+        : {
+            label: "Kirish / Ro'yxatdan o'tish",
+            run: () => {
+              closeAiAssistant();
+              openAuthModal();
+              switchAuthTab("login");
+            },
+          },
+    ]
+  );
+}
+
+function aiPromoAnswer() {
+  const lines = promoCodes
+    .map((promo) => `<strong>${promo.code}</strong> — ${escapeHtml(promo.label)}`)
+    .join("<br>");
+  aiSay(
+    `🎁 <strong>Amaldagi promokodlar:</strong><br>${lines}<br><br>` +
+      "Promokodni savatdagi <strong>Promokod</strong> maydoniga kiriting — chegirma darhol hisoblanadi.",
+    [
+      {
+        label: "Savatni ochish",
+        run: () => {
+          closeAiAssistant();
+          openCartModal();
+        },
+      },
+      { label: "Chegirmadagi mahsulotlar", run: () => aiDiscounts() },
+    ]
+  );
+}
+
+function aiCategoriesAnswer() {
+  const lines = categoriesData
+    .map((category) => {
+      const count = productsData.filter((p) => p.category === category.id).length;
+      return `<strong>${escapeHtml(category.title)}</strong> — ${count} ta mahsulot`;
+    })
+    .join("<br>");
+
+  aiSay(
+    `🗂 Katalogimizda <strong>${productsData.length} ta</strong> mahsulot va ` +
+      `${categoriesData.length} kategoriya bor:<br>${lines}<br><br>Qaysi kategoriyani ko'ramiz?`,
+    categoriesData.map((category) => ({
+      label: category.title,
+      run: () => {
+        closeAiAssistant();
+        switchCategory(category.id);
+      },
+    }))
+  );
+}
+
+function aiCheapest(text) {
+  const category = aiDetectCategory(text);
+  let list = category
+    ? productsData.filter((p) => p.category === category)
+    : productsData.slice();
+  if (!list.length) list = productsData.slice();
+  list.sort((a, b) => a.price - b.price);
+  aiProductAnswer(
+    list,
+    `💰 <strong>${aiCategoryTitle(category)}</strong> bo'yicha eng arzon variantlar:`
+  );
+}
+
+function aiTopRated(text) {
+  const category = aiDetectCategory(text);
+  let list = category
+    ? productsData.filter((p) => p.category === category)
+    : productsData.slice();
+  if (!list.length) list = productsData.slice();
+  list.sort((a, b) => b.rating - a.rating || b.reviews - a.reviews);
+  aiProductAnswer(
+    list,
+    `⭐ <strong>${aiCategoryTitle(category)}</strong> bo'yicha eng yuqori reytingli mahsulotlar:`
+  );
+}
+
+function aiDiscounts() {
+  const list = productsData
+    .filter((product) => product.oldPrice && product.oldPrice > product.price)
+    .map((product) => ({
+      product: product,
+      percent: Math.round((1 - product.price / product.oldPrice) * 100),
+    }))
+    .sort((a, b) => b.percent - a.percent)
+    .slice(0, 3)
+    .map((entry) => entry.product);
+
+  aiProductAnswer(
+    list,
+    "🔥 <strong>Eng katta chegirmadagi mahsulotlar:</strong>"
+  );
+}
+
+function aiNewArrivals() {
+  const list = productsData
+    .filter((product) => product.isNew)
+    .sort((a, b) => b.rating - a.rating)
+    .slice(0, 3);
+  aiProductAnswer(
+    list.length ? list : productsData.slice(0, 3),
+    "✨ <strong>Yangi kelgan mahsulotlar:</strong>"
+  );
+}
+
+function aiRespond(raw) {
+  const t = aiNorm(raw);
+
+  if (!t) {
+    aiSay(
+      "Savolingizni yozing — mahsulot tanlash, narx, yetkazib berish yoki promokodlar bo'yicha yordam beraman.",
+      aiDefaultChips()
+    );
+    return;
+  }
+
+  if (/(^| )(salom|assalom|assalomu alaykum|hayrli kun|hayrli tong|hello|hi|hey)( |$)/.test(t)) {
+    aiSay(
+      "Salom! 👋 Men <strong>SmartMarket AI</strong> — shu do'konning yordamchisiman.<br><br>" +
+        'Menga shunday yozishingiz mumkin:<br>• <em>"1 milliongacha telefon"</em><br>• <em>"eng arzon noutbuk"</em><br>• <em>"yetkazib berish qanday?"</em><br>• <em>"buyurtmam qayerda?"</em>',
+      aiDefaultChips()
+    );
+    return;
+  }
+
+  if (/(rahmat|raxmat|tashakkur|spasibo)/.test(t)) {
+    aiSay("Arzimaydi! 😊 Yana savolingiz bo'lsa, shu yerdaman.", aiDefaultChips());
+    return;
+  }
+
+  if (/(sen kimsan|siz kimsiz|kim siz|sen kim|qanday botsan|suniy intellekt|ai nima)/.test(t)) {
+    aiSay(
+      "Men <strong>SmartMarket AI</strong> — do'konning ichki yordamchisiman. " +
+        "Katalogdan mahsulot topaman, narx va chegirmalarni aytaman, yetkazib berish, to'lov, promokodlar va buyurtma holati bo'yicha javob beraman.<br><br>" +
+        "Javoblar do'kon ma'lumotlariga asoslanadi, shuning uchun har doim aniq narx va mavjud mahsulotni ko'rsataman.",
+      aiDefaultChips()
+    );
+    return;
+  }
+
+  if (/(nima qila olasan|nima qila|qanday yordam|yordam bera|imkoniyat|vazifang)/.test(t)) {
+    aiSay(
+      "Mana nimalarda yordam beraman:<br>" +
+        "• <strong>Mahsulot qidirish</strong> — nomi, brendi yoki narxi bo'yicha<br>" +
+        "• <strong>Eng arzon / eng yaxshi</strong> variantlarni tanlash<br>" +
+        "• <strong>Promokodlar</strong> va chegirmalar<br>" +
+        "• <strong>Yetkazib berish</strong> va to'lov shartlari<br>" +
+        "• <strong>Buyurtma holati</strong> va savat<br>" +
+        "• Kafolat, qaytarish va aloqa ma'lumotlari",
+      aiDefaultChips()
+    );
+    return;
+  }
+
+  if (/(chegirmali|aksiyadagi|arzonlashtirilgan|katta chegirma)/.test(t)) {
+    aiDiscounts();
+    return;
+  }
+
+  if (/(promokod|promo kod|kupon|chegirma kod|skidka)/.test(t)) {
+    aiPromoAnswer();
+    return;
+  }
+
+  if (/(yetkaz|dostavka|kuryer|pochta|qancha kunda|necha kun|olib ket)/.test(t)) {
+    aiSay(
+      "🚚 <strong>Yetkazib berish</strong><br>" +
+        "• O'zbekiston bo'ylab <strong>bepul</strong><br>" +
+        "• Toshkent bo'ylab <strong>24 soat</strong> ichida<br>" +
+        "• Boshqa hududlarga muddat manzilga qarab belgilanadi<br>" +
+        "• Kuryer buyurtmani uyga yoki ishxonaga olib boradi<br><br>" +
+        "Buyurtma holatini <strong>Buyurtmalarim</strong> bo'limida kuzatasiz.",
+      [
+        {
+          label: "Buyurtmalarim",
+          run: () => {
+            closeAiAssistant();
+            switchSection("profile");
+          },
+        },
+        {
+          label: "Savatni ochish",
+          run: () => {
+            closeAiAssistant();
+            openCartModal();
+          },
+        },
+      ]
+    );
+    return;
+  }
+
+  if (/(tolov|karta|naqd|muddatli|bolib tolash|nasiya|rassrochka)/.test(t)) {
+    aiSay(
+      "💳 <strong>To'lov usullari</strong><br>" +
+        "• Naqd pul — kuryerga topshirganda<br>" +
+        "• Bank kartasi orqali<br>" +
+        "• <strong>0% muddatli to'lov</strong> — ortiqcha foizsiz<br><br>" +
+        "To'lov buyurtmani rasmiylashtirishda tanlanadi.",
+      [
+        {
+          label: "Katalogga o'tish",
+          run: () => {
+            closeAiAssistant();
+            startShopping();
+          },
+        },
+      ]
+    );
+    return;
+  }
+
+  if (/(kafolat|qaytar|garantiya|almash|nuqson|buzil)/.test(t)) {
+    aiSay(
+      "🛡 <strong>Kafolat va qaytarish</strong><br>" +
+        "• Barcha mahsulotlarga rasmiy kafolat beriladi<br>" +
+        "• Mahsulotni <strong>14 kun</strong> ichida qaytarish yoki almashtirish mumkin<br>" +
+        "• Nuqson aniqlansa, almashtirish yoki pulni qaytarish ta'minlanadi<br><br>" +
+        "Savatingizdagi xaridlar tarixi hisobingizda saqlanadi.",
+      aiDefaultChips()
+    );
+    return;
+  }
+
+  if (/(aloqa|telefon raqam|manzil|qayerda joylash|telegram|instagram|email|ish vaqti|qollab quvvat)/.test(t)) {
+    aiSay(
+      "📍 <strong>SmartMarket bilan aloqa</strong><br>" +
+        "• Manzil: Toshkent sh., Amir Temur shoh ko'chasi, 108<br>" +
+        "• Telefon: <strong>+998 (71) 200-00-00</strong><br>" +
+        "• Qo'llab-quvvatlash: <strong>24/7</strong><br><br>" +
+        "Savolingizni shu yerda yozsangiz ham bo'ladi — men darhol javob beraman.",
+      aiDefaultChips()
+    );
+    return;
+  }
+
+  if (/(vakansiya|karyera|ishga|rezume|lavozim|ish bormi)/.test(t)) {
+    const lines = vacanciesData
+      .map((job) => `• <strong>${escapeHtml(job.title)}</strong> — ${escapeHtml(job.salary)}`)
+      .join("<br>");
+    aiSay(
+      `💼 Hozir <strong>${vacanciesData.length} ta vakansiya</strong> bor:<br>${lines}<br><br>` +
+        "Ariza qoldirish uchun Vakansiyalar bo'limiga o'ting.",
+      [
+        {
+          label: "Vakansiyalar",
+          run: () => {
+            closeAiAssistant();
+            switchSection("vacancies");
+          },
+        },
+      ]
+    );
+    return;
+  }
+
+  if (/(buyurtma|zakaz)/.test(t)) {
+    if (/(holat|qayerda|kuzat|tekshir|raqam|tarix|royxat|nechta|qachon yetib)/.test(t)) {
+      aiOrderStatus();
+      return;
+    }
+    aiHowToOrder();
+    return;
+  }
+
+  if (/(savat|korzina)/.test(t)) {
+    aiCartAnswer();
+    return;
+  }
+
+  if (/(royxatdan|kirmoq|kirish|login|parol|hisob|akkaunt|profil|sevimli)/.test(t)) {
+    if (currentUser) {
+      aiSay(
+        `Siz <strong>${escapeHtml(currentUser.login || "mijoz")}</strong> sifatida tizimga kirgansiz. ` +
+          "Savat, sevimlilar va buyurtmalar tarixi hisobingizda saqlanadi.",
+        [
+          {
+            label: "Hisobim",
+            run: () => {
+              closeAiAssistant();
+              switchSection("profile");
+            },
+          },
+        ]
+      );
+    } else {
+      aiSay(
+        "🔐 Hisobingizga kirish yoki ro'yxatdan o'tish uchun <strong>Kirish</strong> tugmasini bosing. " +
+          "Telefon raqam yoki email va parol yetarli.<br><br>" +
+          "Hisob bilan: savat, sevimlilar va buyurtmalar tarixi saqlanadi. " +
+          "Eslatma: <strong>buyurtma berish va sevimlilar uchun hisob majburiy</strong>.",
+        [
+          {
+            label: "Kirish / Ro'yxatdan o'tish",
+            run: () => {
+              closeAiAssistant();
+              openAuthModal();
+              switchAuthTab("login");
+            },
+          },
+        ]
+      );
+    }
+    return;
+  }
+
+  if (/(kategoriya|katalog|bolim|assortiment|nima bor|qanaqa mahsulot)/.test(t)) {
+    aiCategoriesAnswer();
+    return;
+  }
+
+  if (/(eng arzon|arzon|tejamkor|budjet|byudjet|eng past narx)/.test(t)) {
+    aiCheapest(raw);
+    return;
+  }
+
+  if (/(eng yaxshi|sifatli|reyting|tavsiya|top mahsulot)/.test(t)) {
+    aiTopRated(raw);
+    return;
+  }
+
+  if (/(yangi kelgan|yangi mahsulot|yangi kolleksiya|oxirgi model|yangilik)/.test(t)) {
+    aiNewArrivals();
+    return;
+  }
+
+  const found = aiSearchProducts(raw);
+  if (found.length) {
+    const intro =
+      found.length === 1
+        ? "Mana shu mahsulotni topdim:"
+        : `Topdim ${found.length} ta mos mahsulot:`;
+    aiProductAnswer(found, intro);
+    return;
+  }
+
+  const budget = aiBudget(raw);
+  if (budget) {
+    const category = aiDetectCategory(raw);
+    const pool = (category
+      ? productsData.filter((p) => p.category === category)
+      : productsData.slice()
+    ).sort((a, b) => a.price - b.price);
+
+    if (pool.length) {
+      aiProductAnswer(
+        pool,
+        `Bu narx oralig'ida (${aiBudgetLabel(budget)}) mos mahsulot topilmadi.<br>` +
+          `<strong>${escapeHtml(aiCategoryTitle(category))}</strong> bo'yicha eng arzon variantlar:`
+      );
+      return;
+    }
+  }
+
+  aiSay(
+    "Bu savolga aniq javob topa olmadim 🤔<br><br>" +
+      'Mana nimalar bo\'yicha yordam bera olaman: mahsulot qidirish (masalan, <strong>"2 milliongacha quloqchin"</strong>), ' +
+      "narxlar va chegirmalar, yetkazib berish, to'lov, promokodlar, buyurtma holati.<br><br>" +
+      "Savolni boshqacha yozib ko'ring.",
+    aiDefaultChips()
+  );
+}
+
+function aiEnsureMarkup() {
+  if (document.getElementById("aiLauncher")) return;
+
+  const launcher = document.createElement("button");
+  launcher.type = "button";
+  launcher.id = "aiLauncher";
+  launcher.className = "ai-launcher";
+  launcher.setAttribute("aria-label", "AI yordamchi bilan suhbatlashish");
+  launcher.onclick = () => toggleAiAssistant();
+  launcher.innerHTML =
+    '<span class="ai-launcher-icon"><i class="fa-solid fa-wand-magic-sparkles"></i>' +
+    '<span class="ai-launcher-dot"></span></span>' +
+    '<span class="ai-launcher-label">AI yordamchi</span>';
+  document.body.appendChild(launcher);
+
+  const panel = document.createElement("div");
+  panel.id = "aiPanel";
+  panel.className = "ai-panel";
+  panel.setAttribute("role", "dialog");
+  panel.setAttribute("aria-label", "SmartMarket AI yordamchi");
+  panel.innerHTML =
+    '<div class="ai-head">' +
+    '<span class="ai-avatar"><i class="fa-solid fa-robot"></i></span>' +
+    '<div class="ai-head-text"><strong>SmartMarket AI</strong>' +
+    '<span><i class="ai-online"></i> Onlayn · o\'zbekcha</span></div>' +
+    '<button type="button" class="ai-close" onclick="closeAiAssistant()" aria-label="Yopish">' +
+    '<i class="fa-solid fa-xmark"></i></button>' +
+    "</div>" +
+    '<div class="ai-messages" id="aiMessages"></div>' +
+    '<div class="ai-chips" id="aiChips"></div>' +
+    '<form class="ai-input" id="aiForm" onsubmit="return aiSubmit(event)">' +
+    '<input id="aiInput" type="text" autocomplete="off" maxlength="220" ' +
+    'placeholder="Savolingizni yozing…" aria-label="Xabar" />' +
+    '<button type="submit" aria-label="Yuborish"><i class="fa-solid fa-paper-plane"></i></button>' +
+    "</form>";
+  document.body.appendChild(panel);
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeAiAssistant();
+  });
+}
+
+function openAiAssistant() {
+  aiEnsureMarkup();
+  const panel = document.getElementById("aiPanel");
+  if (!panel) return;
+  panel.classList.add("is-open");
+
+  const host = aiHost();
+  if (host && !host.children.length) {
+    aiSay(
+      "Salom! 👋 Men <strong>SmartMarket AI</strong>. Mahsulot topish, narxlar, chegirmalar, yetkazib berish va buyurtma holati bo'yicha yordam beraman.<br><br>" +
+        "Nimadan boshlaymiz?",
+      aiDefaultChips()
+    );
+  }
+
+  if (window.innerWidth > 640) {
+    window.setTimeout(() => {
+      const input = document.getElementById("aiInput");
+      if (input) input.focus();
+    }, 240);
+  }
+}
+
+function closeAiAssistant() {
+  const panel = document.getElementById("aiPanel");
+  if (panel) panel.classList.remove("is-open");
+}
+
+function toggleAiAssistant() {
+  const panel = document.getElementById("aiPanel");
+  if (!panel || !panel.classList.contains("is-open")) openAiAssistant();
+  else closeAiAssistant();
+}
+
+function aiSubmit(event) {
+  if (event) event.preventDefault();
+  const input = document.getElementById("aiInput");
+  if (!input) return false;
+  const value = input.value.trim();
+  if (!value) return false;
+  input.value = "";
+  aiSend(value);
+  return false;
+}
+
+function aiSend(text) {
+  const clean = String(text || "").trim();
+  if (!clean) return;
+  aiPushUser(clean);
+  const typing = aiShowTyping();
+  const delay = 420 + Math.min(1000, clean.length * 14);
+  window.setTimeout(() => {
+    if (typing && typing.parentNode) typing.parentNode.removeChild(typing);
+    aiRespond(clean);
+  }, delay);
+}
+
+function initAiAssistant() {
+  aiEnsureMarkup();
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initAiAssistant);
+} else {
+  initAiAssistant();
+}

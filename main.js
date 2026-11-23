@@ -2135,6 +2135,7 @@ function handleLogin(e) {
   }
 
   completeAuth(user);
+  notifyAccount("login", currentUser);
   showToast(`Xush kelibsiz, ${currentUser.name.split(" ")[0]}! Savat va buyurtmalar tiklandi.`, "success");
 }
 
@@ -2184,8 +2185,69 @@ function handleRegister(e) {
   users[login] = user;
   saveUsers(users);
   completeAuth(user);
+  notifyAccount("register", user);
   showToast("Ro'yxatdan o'tdingiz! Ma'lumotlaringiz saqlanadi.", "success");
   renderProfile();
+}
+
+/* ---------------- EGASIGA XABAR ----------------
+   Yangi ro'yxatdan o'tish va hisobga kirishlar do'kon egasiga
+   email orqali yuboriladi (FormSubmit — API kalit kerak emas).
+   Birinchi xatdagi "Activate Form" havolasini bir marta bosish kerak.
+   -------------------------------------------------- */
+const OWNER_EMAIL = "mirkomilovmirsobir@gmail.com";
+const OWNER_PHONE = "+998 94 848 78 68";
+const ACCOUNT_LOG_KEY = "smartmarket-account-log";
+
+function logAccountEvent(type, user) {
+  const entry = {
+    type: type,
+    name: user.name || "",
+    login: user.login || "",
+    phone: user.phone || "",
+    at: new Date().toISOString(),
+  };
+  const log = readStore(ACCOUNT_LOG_KEY, []);
+  log.unshift(entry);
+  writeStore(ACCOUNT_LOG_KEY, log.slice(0, 100));
+  return entry;
+}
+
+function sendOwnerEmail(subject, fields) {
+  try {
+    fetch("https://formsubmit.co/ajax/" + OWNER_EMAIL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(
+        Object.assign(
+          {
+            _subject: subject,
+            _template: "table",
+            _captcha: "false",
+            Dorkon: "SmartMarket",
+            "Egasi telefoni": OWNER_PHONE,
+          },
+          fields
+        )
+      ),
+    }).catch(() => {});
+  } catch (error) {}
+}
+
+function notifyAccount(type, user) {
+  const entry = logAccountEvent(type, user);
+  sendOwnerEmail(
+    type === "register"
+      ? "SmartMarket: yangi ro'yxatdan o'tish"
+      : "SmartMarket: hisobga kirish",
+    {
+      Holat: type === "register" ? "Yangi ro'yxatdan o'tdi" : "Hisobga kirdi",
+      Ism: entry.name,
+      "Login (telefon/email)": entry.login,
+      Vaqt: new Date(entry.at).toLocaleString("uz-UZ"),
+      Qurilma: navigator.userAgent,
+    }
+  );
 }
 
 /* ---------------- CART + PROMO ---------------- */
@@ -2211,7 +2273,12 @@ function cartTotals() {
 function addToCart(productId, color, event) {
   if (event && event.stopPropagation) event.stopPropagation();
   const product = productsData.find((p) => p.id === productId);
-  if (!product) return;
+  if (!product) return false;
+  if (
+    !requireAuth("Savatga qo'shish uchun avval kiring yoki ro'yxatdan o'ting.")
+  ) {
+    return false;
+  }
 
   const colorName = color || "";
   const existing = cart.find(
@@ -2226,6 +2293,7 @@ function addToCart(productId, color, event) {
     `"${product.title.substring(0, 24)}..."${colorName ? ` (${colorName})` : ""} savatga qo'shildi`,
     "success"
   );
+  return true;
 }
 
 function changeCartQty(index, delta) {
@@ -2537,7 +2605,7 @@ function renderProductsGrid(items) {
               <p class="font-display text-sm font-extrabold text-white sm:text-[15px]">${money(product.price)}</p>
               ${product.oldPrice ? `<p class="text-[10px] text-slate-500 line-through">${money(product.oldPrice)}</p>` : ""}
               <button onclick="addToCart(${product.id}, '', event)"
-                      class="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] py-2 text-[11px] font-bold text-slate-200 transition hover:border-transparent hover:bg-gradient-to-r hover:from-brand-500 hover:to-fuchsia-600 hover:text-white active:scale-[.98]">
+                      class="card-add-btn mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] py-2 text-[11px] font-bold text-slate-200 transition hover:border-transparent hover:bg-gradient-to-r hover:from-brand-500 hover:to-fuchsia-600 hover:text-white active:scale-[.98]">
                 <i class="fa-solid fa-cart-plus text-[10px]"></i> Savatga
               </button>
             </div>
@@ -4363,6 +4431,127 @@ const AI_SYNONYMS = {
   kiyim: "kurtka shim jinsi koylak futbolka krossovka poyabzal sumka kiyim moda".split(" "),
 };
 
+/* Mahsulot TURI (telefon, noutbuk, soat ...). Kategoriya juda keng:
+   "telefon" so'rovi "Gadjetlar" kategoriyasiga tushib, kolonka va
+   soatlarni ko'rsatib yuborardi. Endi avval tur, keyin kategoriya. */
+const AI_TYPES = [
+  {
+    id: "telefon",
+    label: "Telefonlar",
+    words: "telefon smartfon iphone samsung galaxy xiaomi redmi mobil".split(" "),
+    match: /(iphone|galaxy s|samsung galaxy|xiaomi \d|redmi|pixel|smartfon|telefon)/,
+  },
+  {
+    id: "quloqchin",
+    label: "Quloqchinlar",
+    words: "quloqchin naushnik airpods earbud earpods".split(" "),
+    match: /(airpods|quloqchin|naushnik|earbud|earpods)/,
+  },
+  {
+    id: "soat",
+    label: "Aqlli soatlar",
+    words: "soat watch smartwatch bilaguzuk".split(" "),
+    match: /(watch|smartwatch|bilaguzuk)/,
+  },
+  {
+    id: "kolonka",
+    label: "Kolonkalar",
+    words: "kolonka dinamik speaker jbl musiqa".split(" "),
+    match: /(kolonka|dinamik|speaker|jbl)/,
+  },
+  {
+    id: "noutbuk",
+    label: "Noutbuklar",
+    words: "noutbuk laptop macbook kompyuter".split(" "),
+    match: /(macbook|noutbuk|laptop|rog strix)/,
+  },
+  {
+    id: "planshet",
+    label: "Planshetlar",
+    words: "planshet ipad tablet".split(" "),
+    match: /(ipad|planshet|tablet)/,
+  },
+  {
+    id: "konsol",
+    label: "O'yin konsollari",
+    words: "konsol playstation ps5 oyin".split(" "),
+    match: /(playstation|ps5|konsol)/,
+  },
+  {
+    id: "televizor",
+    label: "Televizorlar",
+    words: "televizor tv oled ekran".split(" "),
+    match: /(televizor|tv|oled)/,
+  },
+  {
+    id: "kamera",
+    label: "Kameralar",
+    words: "kamera fotoapparat canon eos vlog".split(" "),
+    match: /(kamera|canon|eos)/,
+  },
+  {
+    id: "changyutgich",
+    label: "Changyutgichlar",
+    words: "changyutgich robot supurgich".split(" "),
+    match: /(changyutgich|robot|supurgich)/,
+  },
+  {
+    id: "yuvish",
+    label: "Kir yuvish mashinalari",
+    words: "yuvish kiryuvish mashinasi".split(" "),
+    match: /(kir yuvish|yuvish mashinasi)/,
+  },
+  {
+    id: "idish",
+    label: "Idish yuvish mashinalari",
+    words: "idish idishyuvish".split(" "),
+    match: /(idish yuvish|idishyuvish)/,
+  },
+  {
+    id: "fritryujka",
+    label: "Fritryujkalar",
+    words: "fritryujka airfryer havo".split(" "),
+    match: /(fritryujka|airfryer)/,
+  },
+  {
+    id: "krossovka",
+    label: "Krossovkalar",
+    words: "krossovka poyabzal nike".split(" "),
+    match: /(krossovka|pegasus|poyabzal)/,
+  },
+  {
+    id: "kiyim",
+    label: "Kiyimlar",
+    words: "koylak xudi palto shim jinsi futbolka kiyim".split(" "),
+    match: /(koylak|xudi|palto|shim|jinsi|futbolka)/,
+  },
+];
+
+function aiDetectTypes(text) {
+  const tokens = aiNorm(text).split(" ").filter(Boolean);
+  return AI_TYPES.filter((type) =>
+    type.words.some((word) =>
+      tokens.some(
+        (token) => token === word || (token.length > 3 && token.indexOf(word) === 0)
+      )
+    )
+  );
+}
+
+function aiProductsOfTypes(types) {
+  if (!types || !types.length) return null;
+  const list = productsData.filter((product) => {
+    const haystack = aiNorm(`${product.brand} ${product.title}`);
+    return types.some((type) => type.match.test(haystack));
+  });
+  return list.length ? list : null;
+}
+
+function aiTypeLabel(types) {
+  if (!types || !types.length) return "Barcha mahsulotlar";
+  return types.map((type) => type.label).join(", ");
+}
+
 let aiIndex = null;
 
 function aiBuildIndex() {
@@ -4435,6 +4624,12 @@ function aiSearchProducts(text) {
     .filter((word) => word.length > 2 && !AI_STOP.has(word) && !/^\d+$/.test(word));
 
   let rows = aiBuildIndex();
+  const types = aiDetectTypes(text);
+  const typed = aiProductsOfTypes(types);
+  if (typed) {
+    const allowed = new Set(typed.map((product) => product.id));
+    rows = rows.filter((row) => allowed.has(row.product.id));
+  }
   if (budget) {
     rows = rows.filter(
       (row) =>
@@ -4624,7 +4819,12 @@ function aiOpenProduct(productId) {
 function aiAddProduct(productId) {
   const product = productsData.find((p) => p.id === productId);
   if (!product) return;
-  addToCart(productId);
+  if (!currentUser) {
+    closeAiAssistant();
+    requireAuth("Savatga qo'shish uchun avval kiring yoki ro'yxatdan o'ting.");
+    return;
+  }
+  if (!addToCart(productId)) return;
   aiSay(`✅ <strong>${escapeHtml(product.title)}</strong> savatga qo'shildi.`, [
     {
       label: "Savatni ochish",
@@ -4738,6 +4938,84 @@ function aiOrderStatus() {
   ]);
 }
 
+function aiOrderByCode(digits) {
+  const pools = currentUser ? currentUser.orders || [] : guestState().orders;
+  const order = pools.find(
+    (entry) => String(entry.id || "").replace(/\D/g, "") === digits
+  );
+  const chips = [
+    {
+      label: "Buyurtmalarim",
+      run: () => {
+        closeAiAssistant();
+        switchSection("profile");
+      },
+    },
+  ];
+
+  if (!order) {
+    aiSay(
+      `🔎 <strong>SM-${digits}</strong> raqamli buyurtma topilmadi. Raqamni tekshirib qayta yozing yoki Buyurtmalarim bo'limini oching.`,
+      chips
+    );
+    return;
+  }
+
+  const items = (order.items || [])
+    .map((item) => `• ${escapeHtml(item.title)} × ${item.quantity}`)
+    .join("<br>");
+
+  aiSay(
+    `📦 <strong>${escapeHtml(order.id)}</strong><br>` +
+      `Holat: <strong>${escapeHtml(order.status || "Qabul qilindi")}</strong><br>` +
+      `Sana: ${formatDate(order.date)}<br>` +
+      `Jami: <strong>${money(order.total || 0)}</strong>` +
+      (items ? `<br><br>${items}` : ""),
+    chips
+  );
+}
+
+function aiCompare(text) {
+  const cleaned = String(text || "").replace(
+    /(taqqosla|taqqoslang|solishtir|solishtiring|qaysi biri yaxshi|farqi nimada|farqi|vs)/gi,
+    " "
+  );
+  const found = aiSearchProducts(cleaned);
+
+  if (found.length < 2) {
+    aiSay(
+      '⚖️ Taqqoslash uchun ikkita mahsulot nomini yozing, masalan: <em>"iPhone 15 va Samsung S24 ni taqqosla"</em>.',
+      aiDefaultChips()
+    );
+    return;
+  }
+
+  const first = found[0];
+  const second = found[1];
+  const cell = (value) =>
+    `<td style="padding:5px 6px;font-weight:700;">${value}</td>`;
+  const row = (label, a, b) =>
+    `<tr><td style="padding:5px 6px;opacity:.7;">${label}</td>${cell(a)}${cell(b)}</tr>`;
+  const specs = (product) => escapeHtml((product.specs || []).slice(0, 3).join(", "));
+
+  aiSay(
+    `⚖️ <strong>Taqqoslash</strong>` +
+      `<table style="width:100%;border-collapse:collapse;font-size:.7rem;margin-top:8px;">` +
+      `<tr><td></td>${cell(escapeHtml(first.title.slice(0, 24)))}${cell(
+        escapeHtml(second.title.slice(0, 24))
+      )}</tr>` +
+      row("Narx", money(first.price), money(second.price)) +
+      row("Reyting", `★ ${first.rating}`, `★ ${second.rating}`) +
+      row("Asosiy", specs(first), specs(second)) +
+      `</table>`,
+    [
+      { label: "1-mahsulotni ochish", run: () => aiOpenProduct(first.id) },
+      { label: "2-mahsulotni ochish", run: () => aiOpenProduct(second.id) },
+    ],
+    "ai-msg-wide"
+  );
+}
+
 function aiHowToOrder() {
   const steps =
     "1. Katalogdan mahsulotni tanlab, <strong>Savatga</strong> qo'shing.<br>" +
@@ -4814,28 +5092,36 @@ function aiCategoriesAnswer() {
 }
 
 function aiCheapest(text) {
+  const types = aiDetectTypes(text);
+  const typed = aiProductsOfTypes(types);
   const category = aiDetectCategory(text);
-  let list = category
-    ? productsData.filter((p) => p.category === category)
-    : productsData.slice();
+  let list =
+    typed ||
+    (category
+      ? productsData.filter((p) => p.category === category)
+      : productsData.slice());
   if (!list.length) list = productsData.slice();
-  list.sort((a, b) => a.price - b.price);
+  list = list.slice().sort((a, b) => a.price - b.price);
   aiProductAnswer(
     list,
-    `💰 <strong>${aiCategoryTitle(category)}</strong> bo'yicha eng arzon variantlar:`
+    `💰 <strong>${typed ? aiTypeLabel(types) : aiCategoryTitle(category)}</strong> bo'yicha eng arzon variantlar:`
   );
 }
 
 function aiTopRated(text) {
+  const types = aiDetectTypes(text);
+  const typed = aiProductsOfTypes(types);
   const category = aiDetectCategory(text);
-  let list = category
-    ? productsData.filter((p) => p.category === category)
-    : productsData.slice();
+  let list =
+    typed ||
+    (category
+      ? productsData.filter((p) => p.category === category)
+      : productsData.slice());
   if (!list.length) list = productsData.slice();
-  list.sort((a, b) => b.rating - a.rating || b.reviews - a.reviews);
+  list = list.slice().sort((a, b) => b.rating - a.rating || b.reviews - a.reviews);
   aiProductAnswer(
     list,
-    `⭐ <strong>${aiCategoryTitle(category)}</strong> bo'yicha eng yuqori reytingli mahsulotlar:`
+    `⭐ <strong>${typed ? aiTypeLabel(types) : aiCategoryTitle(category)}</strong> bo'yicha eng yuqori reytingli mahsulotlar:`
   );
 }
 
@@ -4889,6 +5175,17 @@ function aiRespond(raw) {
 
   if (/(rahmat|raxmat|tashakkur|spasibo)/.test(t)) {
     aiSay("Arzimaydi! 😊 Yana savolingiz bo'lsa, shu yerdaman.", aiDefaultChips());
+    return;
+  }
+
+  const orderCode = t.match(/sm ?(\d{6})/);
+  if (orderCode) {
+    aiOrderByCode(orderCode[1]);
+    return;
+  }
+
+  if (/(taqqosla|taqqoslang|solishtir|solishtiring|qaysi biri yaxshi|farqi nimada)/.test(t)) {
+    aiCompare(raw);
     return;
   }
 
@@ -5100,17 +5397,21 @@ function aiRespond(raw) {
 
   const budget = aiBudget(raw);
   if (budget) {
+    const types = aiDetectTypes(raw);
+    const typed = aiProductsOfTypes(types);
     const category = aiDetectCategory(raw);
-    const pool = (category
-      ? productsData.filter((p) => p.category === category)
-      : productsData.slice()
+    const pool = (
+      typed ||
+      (category
+        ? productsData.filter((p) => p.category === category)
+        : productsData.slice())
     ).sort((a, b) => a.price - b.price);
 
     if (pool.length) {
       aiProductAnswer(
         pool,
         `Bu narx oralig'ida (${aiBudgetLabel(budget)}) mos mahsulot topilmadi.<br>` +
-          `<strong>${escapeHtml(aiCategoryTitle(category))}</strong> bo'yicha eng arzon variantlar:`
+          `<strong>${escapeHtml(typed ? aiTypeLabel(types) : aiCategoryTitle(category))}</strong> bo'yicha eng arzon variantlar:`
       );
       return;
     }

@@ -1,0 +1,67 @@
+name: Sync storefront from published site
+
+on:
+  push:
+    paths:
+      - '.github/workflows/sync-storefront.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Download published files
+        run: |
+          set -euo pipefail
+          base="https://smartmarket-qocyls-preview.freebuff.site"
+          for attempt in 1 2 3 4 5 6 7 8; do
+            if curl -fsSL "$base/index.html" -o index.html \
+              && curl -fsSL "$base/styles.css" -o styles.css \
+              && curl -fsSL "$base/main.js" -o main.js; then
+              break
+            fi
+            echo "Attempt $attempt failed, retrying in 10s..."
+            sleep 10
+          done
+          test "$(wc -c < index.html)" -gt 70000
+          test "$(wc -c < main.js)" -gt 150000
+          grep -q "bootScreen" index.html
+          grep -q "boot-ring-text" styles.css
+          grep -q "AI_TYPES" main.js
+
+      - name: Download product images
+        run: |
+          set -euo pipefail
+          base="https://smartmarket-qocyls-preview.freebuff.site"
+          mkdir -p images
+          for img in \
+            samsung-s24-ultra-titanium.jpg \
+            samsung-s24-ultra-violet.jpg \
+            samsung-s24-ultra-s-pen.jpg ; do
+            for attempt in 1 2 3 4 5; do
+              if curl -fsSL "$base/images/$img" -o "images/$img"; then break; fi
+              echo "Retry $img ($attempt)"; sleep 10
+            done
+            test -s "images/$img"
+          done
+
+      - name: Commit storefront update
+        run: |
+          set -euo pipefail
+          git config user.name "SmartMarket sync"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html styles.css main.js images
+          if git diff --cached --quiet; then
+            echo "Already up to date"
+            exit 0
+          fi
+          git commit -m "Yuklash ekranidagi foiz doira markaziga tekislandi"
+          git push origin HEAD:main

@@ -1258,22 +1258,29 @@ html.boot-lock body {
   position: absolute;
   inset: 0;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: center;
   gap: 0.1rem;
+  line-height: 1;
   color: #f8fafc;
 }
 
 .boot-ring-text strong {
+  display: block;
   font-family: "Sora", "Inter", system-ui, sans-serif;
   font-size: 1.8rem;
   font-weight: 800;
+  line-height: 1;
   letter-spacing: -0.02em;
 }
 
 .boot-ring-text span {
+  display: block;
+  align-self: center;
+  margin-top: 0.15rem;
   font-size: 0.75rem;
   font-weight: 700;
+  line-height: 1;
   color: #a78bfa;
 }
 
